@@ -1,7 +1,7 @@
 Phase 2 Interim EG ID
 ---------------------
 This package pieces together the necessary information from `AODSIM` to make 
-sensible but /very preliminary/ cuts on forward (eta>1.4) electrons (and photons in the future)
+sensible but very preliminary cuts on forward (eta>1.4) electrons (and photons in the future)
 
 You will need CMSSW 90X, 82X, or higher.
 Place this inside RecoEgamma, e.g. with example recipe:
@@ -23,21 +23,21 @@ sketch:
 ```c++
 #include "RecoEgamma/Phase2InterimID/interface/HGCalIDTool.h"
 
-class Asdf : EDAnalyzer {
+class AsdfSuperTupler : EDAnalyzer {
   // ...
 
   std::unique_ptr<HGCalIDTool> hgcEmId_;
 };
 
 
-Asdf::Asdf(const edm::ParameterSet& iConfig) {
+AsdfSuperTupler::AsdfSuperTupler(const edm::ParameterSet& iConfig) {
   const edm::ParameterSet& hgcIdCfg = iConfig.getParameterSet("HGCalIDToolConfig");
   auto cc = consumesCollector();
   hgcEmId_.reset( new HGCalIDTool(hgcIdCfg, cc) );
 }
 
 void
-Asdf::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+AsdfSuperTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
   hgcEmId_->getEventSetup(iSetup);
   hgcEmId_->getEvent(iEvent);
@@ -59,4 +59,25 @@ Asdf::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
   }
 }
+```
+
+example cfg file
+```python
+import FWCore.ParameterSet.Config as cms
+process = cms.Process("ANA")
+# ...
+
+process.load("RecoParticleFlow.PFClusterProducer.particleFlowRecHitHGC_cff")
+
+process.ntupler = cms.EDAnalyzer("AsdfSuperTupler",
+    HGCalIDToolConfig = cms.PSet(
+        HGCBHInput = cms.InputTag("HGCalRecHit","HGCHEBRecHits"),
+        HGCEEInput = cms.InputTag("HGCalRecHit","HGCEERecHits"),
+        HGCFHInput = cms.InputTag("HGCalRecHit","HGCHEFRecHits"),
+        HGCPFRecHits = cms.InputTag("particleFlowRecHitHGC::ANA"),
+        withPileup = cms.bool(True),
+    )
+)
+
+process.p = cms.Path(process.particleFlowRecHitHGCSeq+process.ntupler)
 ```
