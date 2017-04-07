@@ -19,6 +19,7 @@ HGCalIDTool::HGCalIDTool(const edm::ParameterSet& conf, edm::ConsumesCollector& 
   hgcPftok( cc.consumes<reco::PFRecHitCollection>(conf.getParameter<edm::InputTag>("HGCPFRecHits")) )
 {
   withPileup_ = conf.getParameter<bool>("withPileup");
+  debug_ = conf.getParameter<bool>("debug");
 
   // parameters
   mip_ = 0.0000551;
@@ -26,23 +27,23 @@ HGCalIDTool::HGCalIDTool(const edm::ParameterSet& conf, edm::ConsumesCollector& 
   rmax_ = 100.; // no transverse limitation for no PU case
   if (withPileup_) rmax_ = 1.5*2.27;
   hovereConesize_ = 0.05;
-    
+
   // HGCAL average medium
   criticalEnergy_ = 0.00536; // in GeV
   radiationLength_ = 0.968; // in cm
-    
+
   // longitudinal parameters
   // mean values
   // shower max <T> = t0 + t1*lny
   // <alpha> = alpha0 + alpha1*lny
-  // shower average = alpha/beta  
+  // shower average = alpha/beta
   meant0_ = -1.396;
   meant1_ = 1.007;
   meanalpha0_ = -0.0433;
   meanalpha1_ = 0.540;
   // sigmas
-  // sigma(lnT) = 1 /sigmalnt0 + sigmalnt1*lny; 
-  // sigma(lnalpha) = 1 /sigmalnt0 + sigmalnt1*lny; 
+  // sigma(lnT) = 1 /sigmalnt0 + sigmalnt1*lny;
+  // sigma(lnalpha) = 1 /sigmalnt0 + sigmalnt1*lny;
   sigmalnt0_ = -2.506;
   sigmalnt1_ = 1.245;
   sigmalnalpha0_ = -0.08442;
@@ -50,7 +51,7 @@ HGCalIDTool::HGCalIDTool(const edm::ParameterSet& conf, edm::ConsumesCollector& 
   // corr(lnalpha,lnt) = corrlnalpha0_+corrlnalphalnt1_*y
   corrlnalphalnt0_ = 0.7858;
   corrlnalphalnt1_ = -0.0232;
-    
+
   // cut values, to be moved as configurable parameters
   cutStartPosition_ = 325.5;
   cutSigmaetaeta_ = 0.0055;
@@ -78,28 +79,38 @@ void HGCalIDTool::getEventSetup(const edm::EventSetup& es) {
   rhtools_.getEventSetup(es);
 }
 
-bool HGCalIDTool::setClusterPtr(const reco::CaloCluster * cluster)
+bool HGCalIDTool::setElectronPtr(const reco::GsfElectron * el)
 {
-  // Check that actually HGCal
+  electron_ = el;
+  cluster_ = nullptr;
+
+  if ( el == nullptr )
+    return false;
+  if ( el->superCluster().isNull() )
+    return false;
+  if ( el->superCluster()->seed().isNull() )
+    return false;
+
+  const reco::CaloCluster * cluster = el->superCluster()->seed().get();
+  // Check that cluster is actually HGCal
   int det_group = cluster->hitsAndFractions()[0].first.det();
   int detector = cluster->hitsAndFractions()[0].first.subdetId();
   if ( (detector==HcalEndcap || det_group == DetId::Forward) ) {
     cluster_ = cluster;
-    showerPos_ = math::XYZPoint(0.,0.,0.);
-    showerDir_ = math::XYZVector(0.,0.,0.);
+    if ( debug_ ) std::cout << "New HGCal GSF Electron --------------------" << std::endl;
     rebuildRecHitFractions();
     calculateShowerPositionAndAxis();
+    calculateClusterStartPosition();
     return true;
   }
 
-  cluster_ = nullptr;
   return false;
 }
 
-double HGCalIDTool::getHadronFraction()
+double HGCalIDTool::getClusterHadronFraction()
 {
   if ( cluster_ == nullptr ) {
-    throw cms::Exception("HGCalIDTool") << "Please call setClusterPtr() first! (and make sure it returns true, otherwise cluster is not from HGCAL)" << std::endl;
+    throw cms::Exception("HGCalIDTool") << "Please call setElectronPtr() first! (and make sure it returns true, otherwise cluster is not from HGCAL)" << std::endl;
   }
 
   float energy=0.f, energyHad=0.f;
@@ -130,7 +141,7 @@ double HGCalIDTool::getHadronFraction()
     } else {
       throw cms::Exception("HGCalHGCalIDTool")
         << " Cluster contains hits that are not from HGCal! " << std::endl;
-    }    
+    }
   }
   float fraction = -1.f;
   if( energy > 0.f ) {
@@ -139,28 +150,28 @@ double HGCalIDTool::getHadronFraction()
   return fraction;
 }
 
-math::XYZPoint HGCalIDTool::getStartPosition()
+void HGCalIDTool::calculateClusterStartPosition()
 {
   if ( cluster_ == nullptr ) {
-    throw cms::Exception("HGCalIDTool") << "Please call setClusterPtr() first! (and make sure it returns true, otherwise cluster is not from HGCAL)" << std::endl;
+    throw cms::Exception("HGCalIDTool") << "Please call setElectronPtr() first! (and make sure it returns true, otherwise cluster is not from HGCAL)" << std::endl;
   }
 
   math::XYZPoint firstPos;
-  double zmin = 10000.0;  
+  double zmin = 10000.0;
   for (unsigned int ih=0;ih<recHitFractions_.size();++ih) {
     const auto& refhit = recHitFractions_[ih].recHitRef();
     const auto& pos = refhit->position();
     const DetId & id_(refhit->detId()) ;
-    if (id_.det()==DetId::Forward) {      
+    if (id_.det()==DetId::Forward) {
       if (std::abs(pos.z())<zmin) {
-	firstPos = pos;
-	zmin = std::abs(pos.z());
+        firstPos = pos;
+        zmin = std::abs(pos.z());
       }
     }
   }
 
-  // refine the first position estimation, taking the max energy in the first layer 
-  double maxfirstenergy=0.; 
+  // refine the first position estimation, taking the max energy in the first layer
+  double maxfirstenergy=0.;
   for (unsigned int ih=0;ih<recHitFractions_.size();++ih) {
     const auto& refhit = recHitFractions_[ih].recHitRef();
     const auto& pos = refhit->position();
@@ -168,34 +179,36 @@ math::XYZPoint HGCalIDTool::getStartPosition()
     if (id_.det()==DetId::Forward) {
       if (std::abs(pos.z()) != zmin) continue;
       if (refhit->energy() > maxfirstenergy) {
-	firstPos = pos;
-	maxfirstenergy = refhit->energy();
+        firstPos = pos;
+        maxfirstenergy = refhit->energy();
       }
     }
   }
-    
-  // finally refine firstPos x and y using the meaured direction 
-  // 
+
+  if ( debug_ ) std::cout << "Calculated start position pre-refine: " << firstPos << std::endl;
+  startPosByCell_ = firstPos;
+
+  // finally refine firstPos x and y using the meaured direction
   double lambda = (firstPos-showerPos_).z()/showerDir_.z();
-  math::XYZPoint extraPos = showerPos_ + lambda*showerDir_;	 
+  math::XYZPoint extraPos = showerPos_ + lambda*showerDir_;
   firstPos = extraPos;
 
-  return firstPos;
-
+  if ( debug_ ) std::cout << "Calculated start position after refine: " << firstPos << std::endl;
+  startPosRefined_ = firstPos;
 }
 
-double HGCalIDTool::getSigmaEtaEta()
+double HGCalIDTool::getClusterSigmaEtaEta()
 {
   if ( cluster_ == nullptr ) {
-    throw cms::Exception("HGCalIDTool") << "Please call setClusterPtr() first! (and make sure it returns true, otherwise cluster is not from HGCAL)" << std::endl;
+    throw cms::Exception("HGCalIDTool") << "Please call setElectronPtr() first! (and make sure it returns true, otherwise cluster is not from HGCAL)" << std::endl;
   }
 
   double sigmaetaeta=0., sumnrj=0.;
-  math::XYZPoint firstPos = getStartPosition();
-    
+  math::XYZPoint firstPos = getClusterStartPosition();
+
   for (unsigned int ih=0;ih<recHitFractions_.size();++ih) {
     const auto& refhit = recHitFractions_[ih].recHitRef();
-    const DetId & id_ = refhit->detId() ;       
+    const DetId & id_ = refhit->detId() ;
     if (id_.det()==DetId::Forward) {
       math::XYZPoint cellPos(refhit->position());
       math::XYZVector radius, longitudinal, transverse;
@@ -205,12 +218,12 @@ double HGCalIDTool::getSigmaEtaEta()
       transverse = radius - longitudinal;
       // apply energy cut cut
       if (!withPileup_ || refhit->energy()>minenergy_*mip_) {
-	// simple transversal cut, later can refine as function of depth
-	if (!withPileup_ || transverse.R() < rmax_) {
-	  const double deta = (cellPos.eta()-showerPos_.eta());
-	  sigmaetaeta += deta*deta*refhit->energy();
-	  sumnrj += refhit->energy();
-	}
+        // simple transversal cut, later can refine as function of depth
+        if (!withPileup_ || transverse.R() < rmax_) {
+          const double deta = (cellPos.eta()-showerPos_.eta());
+          sigmaetaeta += deta*deta*refhit->energy();
+          sumnrj += refhit->energy();
+        }
       }
     }
   }
@@ -221,7 +234,7 @@ double HGCalIDTool::getSigmaEtaEta()
   // now correct the eta dependency
   double feta;
   constexpr double feta_0 = 0.00964148 - 0.01078431*1.5 + 0.00495703*1.5*1.5;
-  const double clu_eta = std::abs(cluster_->eta()); 
+  const double clu_eta = std::abs(cluster_->eta());
   feta = 0.00964148 - clu_eta*(0.0107843 - 0.00495703*clu_eta);
   sigmaetaeta *= feta_0 / feta ;
 
@@ -229,17 +242,17 @@ double HGCalIDTool::getSigmaEtaEta()
 
 }
 
-double HGCalIDTool::getLengthCompatibility()
+double HGCalIDTool::getClusterLengthCompatibility()
 {
   if ( cluster_ == nullptr ) {
-    throw cms::Exception("HGCalIDTool") << "Please call setClusterPtr() first! (and make sure it returns true, otherwise cluster is not from HGCAL)" << std::endl;
+    throw cms::Exception("HGCalIDTool") << "Please call setElectronPtr() first! (and make sure it returns true, otherwise cluster is not from HGCAL)" << std::endl;
   }
 
   double lengthCompatibility=0., predictedLength=0., predictedSigma=0.;
-	
-  // shower length	 
-  const double length =  (showerPos_ - getStartPosition()).R();
-  const double cluster_emEnergy = cluster_->energy() * (1.- getHadronFraction());
+
+  // shower length
+  const double length =  (showerPos_ - getClusterStartPosition()).R();
+  const double cluster_emEnergy = cluster_->energy() * (1.- getClusterHadronFraction());
   const double lny = cluster_emEnergy/criticalEnergy_>1. ? std::log(cluster_emEnergy/criticalEnergy_) : 0.;
 
   // inject here parametrization results
@@ -248,25 +261,25 @@ double HGCalIDTool::getLengthCompatibility()
   const double sigmalntmax = 1.0 / (sigmalnt0_+sigmalnt1_*lny);
   const double sigmalnalpha = 1.0 / (sigmalnalpha0_+sigmalnalpha1_*lny);
   const double corrlnalphalntmax = corrlnalphalnt0_+corrlnalphalnt1_*lny;
-  
+
   const double invbeta = meantmax/(meanalpha-1.);
   predictedLength = meanalpha*invbeta;
   predictedLength *= radiationLength_;
-  
+
   double sigmaalpha = meanalpha*sigmalnalpha;
   if (sigmaalpha<0.) sigmaalpha = 1.;
   double sigmatmax = meantmax*sigmalntmax;
   if (sigmatmax<0.) sigmatmax = 1.;
-  
+
   predictedSigma = sigmalnalpha*sigmalnalpha/((meanalpha-1.)*(meanalpha-1.));
   predictedSigma += sigmalntmax*sigmalntmax;
   predictedSigma -= 2*sigmalnalpha*sigmalntmax*corrlnalphalntmax/(meanalpha-1.);
   predictedSigma = predictedLength*sqrt(predictedSigma);
-  
+
   lengthCompatibility = (predictedLength-length)/predictedSigma;
-  
+
   return lengthCompatibility;
-  
+
 }
 
 void HGCalIDTool::rebuildRecHitFractions()
@@ -289,22 +302,25 @@ void HGCalIDTool::rebuildRecHitFractions()
       throw cms::Exception("MissingRecHit") << "Cluster has missing PFRecHit. cluster eta " << cluster_->eta() << " rechits size " << pfRecHits_->size();
     }
   }
+
+  if ( debug_ && hits.size() == recHitFractions_.size() )
+    std::cout << "Rebuilt all RecHitFractions successfully, there were " << hits.size() << std::endl;
 }
 
 void HGCalIDTool::calculateShowerPositionAndAxis()
-{ 
+{
   if( !cluster_->seed() ) {
     throw cms::Exception("ClusterWithNoSeed") << "Found a cluster with no seed: " << cluster_;
   }
   auto pca_ = std::make_unique<TPrincipal>(3, "D");
 
-  double cl_energy = 0;  
+  double cl_energy = 0;
   double max_e = 0.0;
   double avg_time = 0.0;
   double time_norm = 0.0;
   PFLayer::Layer max_e_layer = PFLayer::NONE;
-  reco::PFRecHitRef refseed;  
-  double pcavars[3];  
+  reco::PFRecHitRef refseed;
+  double pcavars[3];
 
   for( const reco::PFRecHitFraction& rhf : recHitFractions_ ) {
     const reco::PFRecHitRef& refhit = rhf.recHitRef();
@@ -315,37 +331,46 @@ void HGCalIDTool::calculateShowerPositionAndAxis()
       // all times are offset by one nanosecond in digitizer
       // remove that here so all times of flight
       // are with respect to (0,0,0)
-      avg_time += (rh_time - 1.0); 
+      avg_time += (rh_time - 1.0);
       time_norm += 1.0;
     }
     if( rh_energy > max_e ) {
       max_e = rh_energy;
       max_e_layer = rhf.recHitRef()->layer();
-    }  
+    }
     if( refhit->detId() == cluster_->seed() ) refseed = refhit;
     const double rh_fraction = rhf.fraction();
     rh_energy = refhit->energy()*rh_fraction;
     if( edm::isNotFinite(rh_energy) ) {
       throw cms::Exception("PFClusterAlgo")
-	<<"rechit " << refhit->detId() << " has a NaN energy... " 
-	<< "The input of the particle flow clustering seems to be corrupted.";
-    }    
+        <<"rechit " << refhit->detId() << " has a NaN energy... "
+        << "The input of the particle flow clustering seems to be corrupted.";
+    }
     pcavars[0] = refhit->position().x();
     pcavars[1] = refhit->position().y();
-    pcavars[2] = refhit->position().z();     
+    pcavars[2] = refhit->position().z();
     int nhit = int( rh_energy*100 ); // put rec_hit energy in units of 10 MeV
 
     for( int i = 0; i < nhit; ++i ) {
       pca_->AddRow(pcavars);
     }
-      
+
   }
 
   // calculate the position
   pca_->MakePrincipals();
   const TVectorD& means = *(pca_->GetMeanValues());
   const TMatrixD& eigens = *(pca_->GetEigenVectors());
-  
+
+  if ( debug_ ) {
+    std::cout << "HGCal cluster PCA result:" << std::endl;
+    pca_->Print("MSEV");
+    std::cout << "positionAtCalo // the track PCA to the supercluster position: " << electron_->trackPositionAtCalo() << std::endl;
+    std::cout << "momentumAtCalo // the track momentum extrapolated at the supercluster position from the innermost track state: " << electron_->trackMomentumAtCalo() << std::endl;
+    std::cout << "momentumOut // the track momentum extrapolated at the seed cluster position from the outermost track state: " << electron_->trackMomentumOut() << std::endl;
+    std::cout << "momentumAtEleClus // the track momentum extrapolated at the ele cluster position from the outermost track state: " << electron_->trackMomentumAtEleClus() << std::endl;
+  }
+
   math::XYZPoint  barycenter(means[0],means[1],means[2]);
   math::XYZVector axis(eigens(0,0),eigens(1,0),eigens(2,0));
 
@@ -358,8 +383,9 @@ void HGCalIDTool::calculateShowerPositionAndAxis()
   if( axis.z()*barycenter.z() < 0.0 ) {
     axis = math::XYZVector(-eigens(0,0),-eigens(1,0),-eigens(2,0));
   }
-  
-  (void) max_e_layer;
+
+  maxElayer_ = max_e_layer;
   showerPos_ = barycenter;
   showerDir_ = axis;
+  showerTime_ = avg_time;
 }

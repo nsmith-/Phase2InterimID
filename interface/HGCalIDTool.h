@@ -1,6 +1,7 @@
 #include "FWCore/Framework/interface/ConsumesCollector.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
+#include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/CaloRecHit/interface/CaloCluster.h"
 #include "DataFormats/CaloRecHit/interface/CaloClusterFwd.h"
 #include "DataFormats/HGCRecHit/interface/HGCRecHitCollections.h"
@@ -31,19 +32,21 @@ class HGCalIDTool {
     void getEvent(const edm::Event&);
     void getEventSetup(const edm::EventSetup&);
     
-    bool setClusterPtr(const reco::CaloCluster *);
+    bool setElectronPtr(const reco::GsfElectron *);
 
-    math::XYZPoint getStartPosition();
-    math::XYZPoint getShowerPosition() { return showerPos_; }
-    math::XYZVector getShowerAxis() { return showerDir_; }
+    math::XYZPoint getClusterStartPosition() { return startPosRefined_; }
+    math::XYZPoint getClusterStartPositionSimple() { return startPosByCell_; }
+    math::XYZPoint getClusterShowerPosition() { return showerPos_; }
+    math::XYZVector getClusterShowerAxis() { return showerDir_; }
 
-    double getHadronFraction();
-    double getSigmaEtaEta();
-    double getLengthCompatibility();
+    double getClusterHadronFraction();
+    double getClusterSigmaEtaEta();
+    double getClusterLengthCompatibility();
 
   private:
     void rebuildRecHitFractions();
     void calculateShowerPositionAndAxis();
+    void calculateClusterStartPosition();
 
     hgcal::RecHitTools rhtools_;
     const edm::EDGetTokenT<HGCRecHitCollection> eetok, fhtok, bhtok;
@@ -52,6 +55,7 @@ class HGCalIDTool {
     const reco::PFRecHitCollection *pfRecHits_;
 
     bool withPileup_;
+    bool debug_;
 
     double mip_;
     double minenergy_;
@@ -76,9 +80,14 @@ class HGCalIDTool {
     double corrlnalphalnt0_;
     double corrlnalphalnt1_;
 
+    const reco::GsfElectron * electron_;
     const reco::CaloCluster * cluster_;
     std::vector<reco::PFRecHitFraction> recHitFractions_;
+    int maxElayer_;
     math::XYZPoint showerPos_;
     math::XYZVector showerDir_;
+    double showerTime_;
+    math::XYZPoint startPosByCell_;
+    math::XYZPoint startPosRefined_;
 
 };
