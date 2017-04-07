@@ -29,7 +29,7 @@ Sketch example to use the tool:
 ```c++
 #include "RecoEgamma/Phase2InterimID/interface/HGCalIDTool.h"
 
-class AsdfSuperTupler : EDAnalyzer {
+class AsdfSuperTupler : public edm::EDAnalyzer {
   // ...
 
   std::unique_ptr<HGCalIDTool> hgcEmId_;
@@ -75,6 +75,13 @@ process = cms.Process("ANA")
 
 process.load("RecoParticleFlow.PFClusterProducer.particleFlowRecHitHGC_cff")
 
+# Bonus: jurassic track isolation
+# Since PF seems to be a bit buggy lately...
+process.load("RecoEgamma.EgammaIsolationAlgos.electronTrackIsolationLcone_cfi")
+process.electronTrackIsolationLcone.electronProducer = cms.InputTag("ecalDrivenGsfElectrons")
+process.electronTrackIsolationLcone.intRadiusBarrel = 0.04
+process.electronTrackIsolationLcone.intRadiusEndcap = 0.04
+
 process.ntupler = cms.EDAnalyzer("AsdfSuperTupler",
     HGCalIDToolConfig = cms.PSet(
         HGCBHInput = cms.InputTag("HGCalRecHit","HGCHEBRecHits"),
@@ -83,10 +90,11 @@ process.ntupler = cms.EDAnalyzer("AsdfSuperTupler",
         HGCPFRecHits = cms.InputTag("particleFlowRecHitHGC::ANA"),
         withPileup = cms.bool(True),
         debug = cms.bool(False),
-    )
+    ),
+    trackIsoValueMap = cms.InputTag("electronTrackIsolationLcone"),
 )
 
-process.p = cms.Path(process.particleFlowRecHitHGCSeq+process.ntupler)
+process.p = cms.Path(process.electronTrackIsolationLcone+process.particleFlowRecHitHGCSeq+process.ntupler)
 ```
 
 Provenance
