@@ -1,8 +1,10 @@
 Phase 2 Interim EG ID
----------------------
+=====================
 This package pieces together the necessary information from `AODSIM` to make 
-sensible but very preliminary cuts on forward (eta>1.4) electrons (and photons in the future)
+sensible but *very preliminary* cuts on forward (`eta>1.4`) electrons (and photons in the future)
 
+Recipe
+------
 You will need CMSSW 90X, 82X, or higher.
 Place this inside RecoEgamma, e.g. with example recipe:
 ```bash
@@ -10,16 +12,20 @@ cmsrel CMSSW_8_2_0_patch1
 cd CMSSW_8_2_0_patch1/src
 cmsenv
 git cms-init
-git cms-addpkg RecoEgamma/ElectronIdentification
+git cms-merge-topic -u nsmith-/phase2_hgcalInterimID
 pushd RecoEgamma
 git clone git@github.com:nsmith-/Phase2InterimID.git
 popd
 scram b
 ```
 
-TODO: example setup
+ValueMap Setup
+--------------
+TODO
 
-sketch:
+Examples
+--------
+Sketch example to use the tool:
 ```c++
 #include "RecoEgamma/Phase2InterimID/interface/HGCalIDTool.h"
 
@@ -43,25 +49,25 @@ AsdfSuperTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   hgcEmId_->getEvent(iEvent);
 
   // ...
+  
   for (const auto& el : ecalDrivenGsfElectrons) {
-    if ( el->superCluster().isNonnull() && el->superCluster()->seed().isNonnull() ) {
-      const reco::CaloCluster * cluster = el->superCluster()->seed().get();
-      bool isHGCal = hgcEmId_->setClusterPtr(cluster);
-      if ( isHGCal ) {
-        hOverE_hgcalSafe_.push_back( hgcEmId_->getHadronFraction() );
-        hgcId_startPosition_.push_back( std::abs(hgcEmId_->getStartPosition().z()) );
-        hgcId_sigmaietaieta_.push_back( hgcEmId_->getSigmaEtaEta() );
-        hgcId_lengthCompatibility_.push_back( hgcEmId_->getLengthCompatibility() );
-      }
-      else {
-        // Use run 2 variables
-      }
+    bool isHGCal = hgcEmId_->setElectronPtr(&el);
+    if ( isHGCal ) {
+      // These are some std::vector<float> variables
+      // you can add to your nTuple or whatever...
+      hgcId_hadronFraction.push_back( hgcEmId_->getClusterHadronFraction() );
+      hgcId_absEndcapShowerZ.push_back( std::abs(hgcEmId_->getClusterStartPosition().z()) );
+      hgcId_sigmaEtaEta.push_back( hgcEmId_->getClusterSigmaEtaEta() );
+      hgcId_lengthCompatibility.push_back( hgcEmId_->getClusterLengthCompatibility() );
+    }
+    else {
+      // Use run 2 variables
     }
   }
 }
 ```
 
-example cfg file
+Example cfg file:
 ```python
 import FWCore.ParameterSet.Config as cms
 process = cms.Process("ANA")
@@ -76,8 +82,13 @@ process.ntupler = cms.EDAnalyzer("AsdfSuperTupler",
         HGCFHInput = cms.InputTag("HGCalRecHit","HGCHEFRecHits"),
         HGCPFRecHits = cms.InputTag("particleFlowRecHitHGC::ANA"),
         withPileup = cms.bool(True),
+        debug = cms.bool(False),
     )
 )
 
 process.p = cms.Path(process.particleFlowRecHitHGCSeq+process.ntupler)
 ```
+
+Provenance
+----------
+The main code was ripped from [HGCALShowerBasedEmIdentification](https://github.com/cms-sw/cmssw/blob/CMSSW_6_2_X_SLHC/RecoEcal/EgammaClusterAlgos/src/HGCALShowerBasedEmIdentification.cc) which only exists in `CMSSW_6_2_X_SLHC` at the moment.  Direct porting was not possible to some missing variables in the `PFCandidate` data format.  The `PFRecHitFraction`s had to be rebuilt because the `AODSIM` output dropped all the `PFRecHit`s (there is a "Cleaned" collection but it is empty).
