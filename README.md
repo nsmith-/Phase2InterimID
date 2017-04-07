@@ -59,6 +59,7 @@ AsdfSuperTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
       hgcId_absEndcapShowerZ.push_back( std::abs(hgcEmId_->getClusterStartPosition().z()) );
       hgcId_sigmaEtaEta.push_back( hgcEmId_->getClusterSigmaEtaEta() );
       hgcId_lengthCompatibility.push_back( hgcEmId_->getClusterLengthCompatibility() );
+      hgcId_cosTrackShowerAxisAngle.push_back( el.trackMomentumOut().Unit().Dot(hgcEmId_->getClusterShowerAxis().Unit()) );
     }
     else {
       // Use run 2 variables
