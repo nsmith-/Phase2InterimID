@@ -74,6 +74,7 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process("ANA")
 # ...
 
+process.load('Configuration.Geometry.GeometryExtended2023D4Reco_cff')
 process.load("RecoParticleFlow.PFClusterProducer.particleFlowRecHitHGC_cff")
 
 # Bonus: jurassic track isolation
