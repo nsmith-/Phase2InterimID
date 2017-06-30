@@ -49,21 +49,26 @@ namespace {
     Long64_t run;
     Long64_t lumi;
     Long64_t event;
-    double gen_pt;
-    double gen_eta;
-    double gen_phi;
-    double gen_id;
-    double gen_fBrem;
-    double gen_nGeantTracks;
-    double gen_isPromptFinalState;
-    double localReco_deltaR;
-    double localReco_pt;
-    double localReco_eta;
-    double localReco_phi;
-    double gedReco_deltaR;
-    double gedReco_pt;
-    double gedReco_eta;
-    double gedReco_phi;
+    float gen_pt;
+    float gen_eta;
+    float gen_phi;
+    float gen_id;
+    float gen_fBrem;
+    float gen_nGeantTracks;
+    float gen_isPromptFinalState;
+    float localReco_deltaR;
+    float localReco_pt;
+    float localReco_eta;
+    float localReco_phi;
+    float gedReco_deltaR;
+    float gedReco_pt;
+    float gedReco_eta;
+    float gedReco_phi;
+    float gedReco_eSC;
+    float gedIsoChargedHadrons;
+    float gedIsoNeutralHadrons;
+    float gedIsoPhotons;
+    float gedIsoChargedFromPU;
   };
 }
 
@@ -121,6 +126,10 @@ Phase2ElectronTupler::Phase2ElectronTupler(const edm::ParameterSet& iConfig):
   genToRecoTree_->Branch("gedReco_pt", &genToReco_.gedReco_pt);
   genToRecoTree_->Branch("gedReco_eta", &genToReco_.gedReco_eta);
   genToRecoTree_->Branch("gedReco_phi", &genToReco_.gedReco_phi);
+  genToRecoTree_->Branch("gedIsoChargedHadrons", &genToReco_.gedIsoChargedHadrons);
+  genToRecoTree_->Branch("gedIsoNeutralHadrons", &genToReco_.gedIsoNeutralHadrons);
+  genToRecoTree_->Branch("gedIsoPhotons", &genToReco_.gedIsoPhotons);
+  genToRecoTree_->Branch("gedIsoChargedFromPU", &genToReco_.gedIsoChargedFromPU);
 }
 
 
@@ -179,7 +188,7 @@ Phase2ElectronTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& i
     genToReco_.gen_fBrem = -1.;
     genToReco_.gen_nGeantTracks = -1.;
     if ( matchedTp != nullptr ) {
-      genToReco_.gen_fBrem = (matchedTp->g4Tracks().cbegin()->momentum().pt() - matchedTp->g4Tracks().begin()->momentum().pt()) / gp.pt();
+      genToReco_.gen_fBrem = (matchedTp->g4Tracks().rbegin()->momentum().pt() - matchedTp->g4Tracks().begin()->momentum().pt()) / gp.pt();
       genToReco_.gen_nGeantTracks = matchedTp->g4Tracks().size();
     }
 
@@ -218,11 +227,21 @@ Phase2ElectronTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& i
     genToReco_.gedReco_pt = 0.;
     genToReco_.gedReco_eta = 0.;
     genToReco_.gedReco_phi = 0.;
+    genToReco_.gedIsoChargedHadrons = 0.;
+    genToReco_.gedIsoNeutralHadrons = 0.;
+    genToReco_.gedIsoPhotons = 0.;
+    genToReco_.gedIsoChargedFromPU = 0.;
     if ( gedPtr != gedGsfElectronsH->end() ) {
       genToReco_.gedReco_deltaR = reco::deltaR(*gedPtr, gp);
       genToReco_.gedReco_pt = gedPtr->pt();
       genToReco_.gedReco_eta = gedPtr->eta();
       genToReco_.gedReco_phi = gedPtr->phi();
+
+      reco::GsfElectron::PflowIsolationVariables pfIso = gedPtr->pfIsolationVariables();
+      genToReco_.gedIsoChargedHadrons = pfIso.sumChargedHadronPt;
+      genToReco_.gedIsoNeutralHadrons = pfIso.sumNeutralHadronEt;
+      genToReco_.gedIsoPhotons = pfIso.sumPhotonEt;
+      genToReco_.gedIsoChargedFromPU = pfIso.sumPUPt;
     }
 
 
