@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    Analysis/Phase2ElectronTupler
-// Class:      Phase2ElectronTupler
+// Package:    Analysis/Phase2PhotonTupler
+// Class:      Phase2PhotonTupler
 // 
-/**\class Phase2ElectronTupler Phase2ElectronTupler.cc Analysis/Phase2ElectronTupler/plugins/Phase2ElectronTupler.cc
+/**\class Phase2PhotonTupler Phase2PhotonTupler.cc Analysis/Phase2PhotonTupler/plugins/Phase2PhotonTupler.cc
 
  Description: 
 
@@ -29,16 +29,15 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "CommonTools/Utils/interface/StringObjectFunction.h"
+#include "CommonTools/Utils/interface/StringCutObjectSelector.h"
 #include "TTree.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "DataFormats/Math/interface/deltaR.h"
 
-#include "DataFormats/VertexReco/interface/VertexFwd.h"
-#include "DataFormats/VertexReco/interface/Vertex.h"
-#include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
-#include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
+#include "DataFormats/EgammaCandidates/interface/Photon.h"
+#include "DataFormats/EgammaCandidates/interface/PhotonFwd.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "SimDataFormats/CaloAnalysis/interface/SimCluster.h"
 #include "SimDataFormats/CaloAnalysis/interface/SimClusterFwd.h"
@@ -74,9 +73,6 @@ namespace {
     Long64_t run;
     Long64_t lumi;
     Long64_t event;
-    float rho;
-    int nPV;
-
     std::vector<float> gen_pt;
     std::vector<float> gen_eta;
     std::vector<float> gen_phi;
@@ -93,19 +89,19 @@ namespace {
     std::vector<float> localReco_pt;
     std::vector<float> localReco_eta;
     std::vector<float> localReco_phi;
-    std::vector<EZBranch<reco::GsfElectron>> localReco_misc;
+    std::vector<EZBranch<reco::Photon>> localReco_misc;
 
     std::vector<float> gedReco_pt;
     std::vector<float> gedReco_eta;
     std::vector<float> gedReco_phi;
-    std::vector<EZBranch<reco::GsfElectron>> gedReco_misc;
+    std::vector<EZBranch<reco::Photon>> gedReco_misc;
   };
 }
 
-class Phase2ElectronTupler : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
+class Phase2PhotonTupler : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
   public:
-    explicit Phase2ElectronTupler(const edm::ParameterSet&);
-    ~Phase2ElectronTupler();
+    explicit Phase2PhotonTupler(const edm::ParameterSet&);
+    ~Phase2PhotonTupler();
 
     static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -115,96 +111,88 @@ class Phase2ElectronTupler : public edm::one::EDAnalyzer<edm::one::SharedResourc
     virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
     virtual void endJob() override;
 
-    edm::EDGetTokenT<double> rhoToken_;
-    edm::EDGetTokenT<reco::VertexCollection> vtxToken_;
-    edm::EDGetTokenT<reco::GsfElectronCollection> ecalDrivenElectronsToken_;
-    edm::EDGetTokenT<reco::GsfElectronCollection> gedGsfElectronsToken_;
+    edm::EDGetTokenT<reco::PhotonCollection> photonsToken_;
+    edm::EDGetTokenT<reco::PhotonCollection> gedPhotonsToken_;
     edm::EDGetTokenT<reco::GenParticleCollection> genParticlesToken_;
     edm::EDGetTokenT<SimClusterCollection> simClustersToken_;
     edm::EDGetTokenT<CaloParticleCollection> caloParticlesToken_;
     edm::EDGetTokenT<TrackingParticleCollection> trackingParticlesToken_;
+    edm::EDGetTokenT<TrackingVertexCollection> trackingVerticesToken_;
 
-    TTree * electronTree_;
+    TTree * photonTree_;
     EventStruct event_;
+
+    StringCutObjectSelector<reco::GenParticle, false> genCut_;
 };
 
-Phase2ElectronTupler::Phase2ElectronTupler(const edm::ParameterSet& iConfig):
-  rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rho"))),
-  vtxToken_(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("vertexSrc"))),
-  ecalDrivenElectronsToken_(consumes<reco::GsfElectronCollection>(iConfig.getParameter<edm::InputTag>("ecalDrivenElectrons"))),
-  gedGsfElectronsToken_(consumes<reco::GsfElectronCollection>(iConfig.getParameter<edm::InputTag>("gedGsfElectrons"))),
+Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
+  photonsToken_(consumes<reco::PhotonCollection>(iConfig.getParameter<edm::InputTag>("photons"))),
+  gedPhotonsToken_(consumes<reco::PhotonCollection>(iConfig.getParameter<edm::InputTag>("gedPhotons"))),
   genParticlesToken_(consumes<reco::GenParticleCollection>(iConfig.getParameter<edm::InputTag>("genParticles"))),
   simClustersToken_(consumes<SimClusterCollection>(iConfig.getParameter<edm::InputTag>("simClusters"))),
   caloParticlesToken_(consumes<CaloParticleCollection>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
-  trackingParticlesToken_(consumes<TrackingParticleCollection>(iConfig.getParameter<edm::InputTag>("trackingParticles")))
+  trackingParticlesToken_(consumes<TrackingParticleCollection>(iConfig.getParameter<edm::InputTag>("trackingParticles"))),
+  trackingVerticesToken_(consumes<TrackingVertexCollection>(iConfig.getParameter<edm::InputTag>("trackingVertices"))),
+  genCut_(iConfig.getParameter<std::string>("genCut"))
 {
   usesResource("TFileService");
   edm::Service<TFileService> fs;
 
-  electronTree_ = fs->make<TTree>("electrons", "");
-  electronTree_->Branch("run", &event_.run);
-  electronTree_->Branch("lumi", &event_.lumi);
-  electronTree_->Branch("event", &event_.event);
-  electronTree_->Branch("rho", &event_.rho);
-  electronTree_->Branch("nPV", &event_.nPV);
+  photonTree_ = fs->make<TTree>("photons", "");
+  photonTree_->Branch("run", &event_.run);
+  photonTree_->Branch("lumi", &event_.lumi);
+  photonTree_->Branch("event", &event_.event);
+  photonTree_->Branch("gen_pt", &event_.gen_pt);
+  photonTree_->Branch("gen_eta", &event_.gen_eta);
+  photonTree_->Branch("gen_phi", &event_.gen_phi);
+  photonTree_->Branch("gen_id", &event_.gen_id);
+  photonTree_->Branch("gen_parentId", &event_.gen_parentId);
+  photonTree_->Branch("gen_fBrem", &event_.gen_fBrem);
+  photonTree_->Branch("gen_nGeantTracks", &event_.gen_nGeantTracks);
+  photonTree_->Branch("gen_isPromptFinalState", &event_.gen_isPromptFinalState);
+  photonTree_->Branch("gen_iLocalReco", &event_.gen_iLocalReco);
+  photonTree_->Branch("gen_localRecoDeltaR", &event_.gen_localRecoDeltaR);
+  photonTree_->Branch("gen_iGedReco", &event_.gen_iGedReco);
+  photonTree_->Branch("gen_gedRecoDeltaR", &event_.gen_gedRecoDeltaR);
 
-  electronTree_->Branch("gen_pt", &event_.gen_pt);
-  electronTree_->Branch("gen_eta", &event_.gen_eta);
-  electronTree_->Branch("gen_phi", &event_.gen_phi);
-  electronTree_->Branch("gen_id", &event_.gen_id);
-  electronTree_->Branch("gen_parentId", &event_.gen_parentId);
-  electronTree_->Branch("gen_fBrem", &event_.gen_fBrem);
-  electronTree_->Branch("gen_nGeantTracks", &event_.gen_nGeantTracks);
-  electronTree_->Branch("gen_isPromptFinalState", &event_.gen_isPromptFinalState);
-  electronTree_->Branch("gen_iLocalReco", &event_.gen_iLocalReco);
-  electronTree_->Branch("gen_localRecoDeltaR", &event_.gen_localRecoDeltaR);
-  electronTree_->Branch("gen_iGedReco", &event_.gen_iGedReco);
-  electronTree_->Branch("gen_gedRecoDeltaR", &event_.gen_gedRecoDeltaR);
-
-  electronTree_->Branch("localReco_pt", &event_.localReco_pt);
-  electronTree_->Branch("localReco_eta", &event_.localReco_eta);
-  electronTree_->Branch("localReco_phi", &event_.localReco_phi);
+  photonTree_->Branch("localReco_pt", &event_.localReco_pt);
+  photonTree_->Branch("localReco_eta", &event_.localReco_eta);
+  photonTree_->Branch("localReco_phi", &event_.localReco_phi);
   auto localRecoMisc = iConfig.getParameter<edm::ParameterSet>("localRecoMisc");
   for (auto name : localRecoMisc.getParameterNames()) {
     if ( localRecoMisc.existsAs<std::string>(name) ) {
-      event_.localReco_misc.emplace_back(electronTree_, "localReco_"+name, localRecoMisc.getParameter<std::string>(name));
+      event_.localReco_misc.emplace_back(photonTree_, "localReco_"+name, localRecoMisc.getParameter<std::string>(name));
     }
   }
 
-  electronTree_->Branch("gedReco_pt", &event_.gedReco_pt);
-  electronTree_->Branch("gedReco_eta", &event_.gedReco_eta);
-  electronTree_->Branch("gedReco_phi", &event_.gedReco_phi);
+  photonTree_->Branch("gedReco_pt", &event_.gedReco_pt);
+  photonTree_->Branch("gedReco_eta", &event_.gedReco_eta);
+  photonTree_->Branch("gedReco_phi", &event_.gedReco_phi);
   auto gedRecoMisc = iConfig.getParameter<edm::ParameterSet>("gedRecoMisc");
   for (auto name : gedRecoMisc.getParameterNames()) {
     if ( gedRecoMisc.existsAs<std::string>(name) ) {
-      event_.gedReco_misc.emplace_back(electronTree_, "gedReco_"+name, gedRecoMisc.getParameter<std::string>(name));
+      event_.gedReco_misc.emplace_back(photonTree_, "gedReco_"+name, gedRecoMisc.getParameter<std::string>(name));
     }
   }
 
 }
 
 
-Phase2ElectronTupler::~Phase2ElectronTupler()
+Phase2PhotonTupler::~Phase2PhotonTupler()
 {
 }
 
 
 void
-Phase2ElectronTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
   using namespace edm;
 
-  Handle<double> rhoH;
-  iEvent.getByToken(rhoToken_, rhoH);
+  Handle<reco::PhotonCollection> photonsH;
+  iEvent.getByToken(photonsToken_, photonsH);
 
-  Handle<reco::VertexCollection> vertexH;
-  iEvent.getByToken(vtxToken_, vertexH);
-
-  Handle<reco::GsfElectronCollection> ecalDrivenElectronsH;
-  iEvent.getByToken(ecalDrivenElectronsToken_, ecalDrivenElectronsH);
-
-  Handle<reco::GsfElectronCollection> gedGsfElectronsH;
-  iEvent.getByToken(gedGsfElectronsToken_, gedGsfElectronsH);
+  Handle<reco::PhotonCollection> gedPhotonsH;
+  iEvent.getByToken(gedPhotonsToken_, gedPhotonsH);
 
   Handle<reco::GenParticleCollection> genParticlesH;
   iEvent.getByToken(genParticlesToken_, genParticlesH);
@@ -218,18 +206,19 @@ Phase2ElectronTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& i
   Handle<TrackingParticleCollection> trackingParticlesH;
   iEvent.getByToken(trackingParticlesToken_, trackingParticlesH);
 
+  Handle<TrackingVertexCollection> trackingVerticesH;
+  iEvent.getByToken(trackingVerticesToken_, trackingVerticesH);
+
   event_.run = iEvent.run();
   event_.lumi = iEvent.luminosityBlock();
   event_.event = iEvent.id().event();
-  event_.rho = *rhoH;
-  event_.nPV = vertexH->size();
 
   event_.localReco_pt.clear();
   event_.localReco_eta.clear();
   event_.localReco_phi.clear();
   for(auto&& b : event_.localReco_misc) b.clear();
-  for(size_t iPho=0; iPho<ecalDrivenElectronsH->size(); ++iPho) {
-    const auto& pho = ecalDrivenElectronsH->at(iPho);
+  for(size_t iPho=0; iPho<photonsH->size(); ++iPho) {
+    const auto& pho = photonsH->at(iPho);
 
     event_.localReco_pt.push_back(pho.pt());
     event_.localReco_eta.push_back(pho.eta());
@@ -241,8 +230,8 @@ Phase2ElectronTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& i
   event_.gedReco_eta.clear();
   event_.gedReco_phi.clear();
   for(auto&& b : event_.gedReco_misc) b.clear();
-  for(size_t iPho=0; iPho<gedGsfElectronsH->size(); ++iPho) {
-    const auto& pho = gedGsfElectronsH->at(iPho);
+  for(size_t iPho=0; iPho<gedPhotonsH->size(); ++iPho) {
+    const auto& pho = gedPhotonsH->at(iPho);
 
     event_.gedReco_pt.push_back(pho.pt());
     event_.gedReco_eta.push_back(pho.eta());
@@ -271,8 +260,7 @@ Phase2ElectronTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& i
   event_.gen_gedRecoDeltaR.clear();
   for (size_t iGp=0; iGp<genParticlesH->size(); ++iGp) {
     const auto& gp = genParticlesH->at(iGp);
-    if ( gp.pt() < 5. || gp.status() != 1 ) continue;
-    if ( std::abs(gp.pdgId()) != 11 ) continue;
+    if ( not genCut_(gp) ) continue;
     event_.gen_pt.push_back(gp.pt());
     event_.gen_eta.push_back(gp.eta());
     event_.gen_phi.push_back(gp.phi());
@@ -281,7 +269,7 @@ Phase2ElectronTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& i
     event_.gen_isPromptFinalState.push_back(gp.isPromptFinalState());
 
     // Find the corresponding TrackingParticle object
-    // which contains the GEANT history of the electrons
+    // which contains the GEANT history of the photons
     const TrackingParticle * matchedTp{nullptr};
     for (size_t iTp=0; iTp<trackingParticlesH->size(); ++iTp) {
       const auto& tp = trackingParticlesH->at(iTp);
@@ -325,90 +313,24 @@ Phase2ElectronTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& i
     event_.gen_gedRecoDeltaR.push_back(minDrGedReco);
   }
 
-  electronTree_->Fill();
-  /*
-  int nGeantElectrons{0};
-  for (size_t iTp=0; iTp<trackingParticlesH->size(); ++iTp) {
-    const auto& tp = trackingParticlesH->at(iTp);
-    if ( std::abs(tp.pdgId()) != 11 || tp.status() != 1 || tp.pt() < 5. ) continue;
-    // std::cout << tp << std::endl;
-
-    double genIsolation{0.};
-    for (size_t jTp=0; jTp<trackingParticlesH->size(); ++jTp) {
-      if ( jTp == iTp ) continue;
-      const auto& tp2 = trackingParticlesH->at(jTp);
-      if ( reco::deltaR(tp, tp2) > 0.3 || tp2.vertex() != tp.vertex() ) continue;
-      // std::cout << " -- iso cone" << tp2 << std::endl;
-      genIsolation += tp2.pt();
-    }
-    genIsolation /= tp.pt();
-    std::cout << "Gen. isolation = " << genIsolation << std::endl;
-
-    nGeantElectrons++;
-  }
-
-  for (size_t iEl=0; iEl<ecalDrivenElectronsH->size(); iEl++) {
-    break;
-    const auto& el = ecalDrivenElectronsH->at(iEl);
-    std::cout << "New ecalDrivenElectron candidate ------------------------------" << std::endl;
-    std::cout << "Polar p4: " << el.pt() << ", " << el.eta() << ", " << el.phi() << std::endl;
-    std::cout << "Cartesian p4: " << el.p4() << std::endl;
-    
-    auto matchedGenPtr = genParticlesH->end();
-    double minDR = std::numeric_limits<double>::infinity();
-    for (auto gp=genParticlesH->begin(); gp!=genParticlesH->end(); gp++) {
-      if ( gp->status() != 1 ) continue;
-      if ( reco::deltaR(*gp, el) < minDR ) {
-        minDR = reco::deltaR(*gp, el);
-        matchedGenPtr = gp;
-      }
-    }
-    std::cout << "Nearest genParticle deltaR=" << reco::deltaR(*matchedGenPtr, el) << " info:" << std::endl;
-    std::cout << "  genP id, p4, pt, eta: " << matchedGenPtr->pdgId() << ", " << matchedGenPtr->p4() << ", " << matchedGenPtr->pt() << ", " << matchedGenPtr->eta() << std::endl;
-    
-    std::vector<const SimCluster *> nearbyClusters;
-    for (const SimCluster& clu : *simClustersH) {
-      if ( reco::deltaR(clu, el) < 0.1 ) {
-        nearbyClusters.push_back(&clu);
-      }
-    }
-    std::sort(nearbyClusters.begin(), nearbyClusters.end(), [&el](const SimCluster* a, const SimCluster* b) -> double { return reco::deltaR(*a, el) < reco::deltaR(*b, el); });
-    for (auto clu : nearbyClusters) {
-      std::cout << "Nearby simCluster dR=" << reco::deltaR(*clu, el) << std::endl;
-      std::cout << *clu << std::endl;
-    }
-
-    std::vector<const CaloParticle *> nearbyCaloParticles;
-    for (const CaloParticle& cp : *caloParticlesH) {
-      if ( reco::deltaR(cp, el) < 0.1 ) {
-        nearbyCaloParticles.push_back(&cp);
-      }
-    }
-    std::sort(nearbyCaloParticles.begin(), nearbyCaloParticles.end(), [&el](const CaloParticle* a, const CaloParticle* b) -> double { return reco::deltaR(*a, el) < reco::deltaR(*b, el); });
-    for (auto cp : nearbyCaloParticles) {
-      std::cout << "Nearby caloParticle dR=" << reco::deltaR(*cp, el) << std::endl;
-      std::cout << *cp << std::endl;
-    }
-  }
-  */
-
+  photonTree_->Fill();
 }
 
 
 void 
-Phase2ElectronTupler::beginJob()
+Phase2PhotonTupler::beginJob()
 {
 }
 
 
 void 
-Phase2ElectronTupler::endJob() 
+Phase2PhotonTupler::endJob() 
 {
 }
 
 
 void
-Phase2ElectronTupler::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+Phase2PhotonTupler::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //The following says we do not know what parameters are allowed so do no validation
   // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
@@ -416,4 +338,4 @@ Phase2ElectronTupler::fillDescriptions(edm::ConfigurationDescriptions& descripti
   descriptions.addDefault(desc);
 }
 
-DEFINE_FWK_MODULE(Phase2ElectronTupler);
+DEFINE_FWK_MODULE(Phase2PhotonTupler);

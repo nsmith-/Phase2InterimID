@@ -8,15 +8,14 @@ Recipe
 You will need CMSSW 90X, 82X, or higher.
 Place this inside RecoEgamma, e.g. with example recipe:
 ```bash
-cmsrel CMSSW_8_2_0_patch1
-cd CMSSW_8_2_0_patch1/src
+cmsrel CMSSW_9_3_2
+cd CMSSW_9_3_2/src
 cmsenv
 git cms-init
-git cms-merge-topic -u nsmith-/phase2_hgcalInterimID
-pushd RecoEgamma
+mkdir RecoEgamma && pushd RecoEgamma
 git clone git@github.com:nsmith-/Phase2InterimID.git
 popd
-scram b
+scram b -j 4
 ```
 
 ValueMap Setup
