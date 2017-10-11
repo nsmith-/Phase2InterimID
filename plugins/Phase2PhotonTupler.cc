@@ -96,6 +96,12 @@ namespace {
     std::vector<float> gedReco_eta;
     std::vector<float> gedReco_phi;
     std::vector<EZBranch<reco::Photon>> gedReco_misc;
+    std::vector<float> gedReco_TPmetric;
+    std::vector<int> gedReco_TPid;
+    std::vector<float> gedReco_TPpt;
+    std::vector<float> gedReco_TPeta;
+    std::vector<float> gedReco_TPphi;
+    std::vector<int> gedReco_TPevent;
   };
 }
 
@@ -176,6 +182,12 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
       event_.gedReco_misc.emplace_back(photonTree_, "gedReco_"+name, gedRecoMisc.getParameter<std::string>(name));
     }
   }
+  photonTree_->Branch("gedReco_TPmetric", &event_.gedReco_TPmetric);
+  photonTree_->Branch("gedReco_TPid", &event_.gedReco_TPid);
+  photonTree_->Branch("gedReco_TPpt", &event_.gedReco_TPpt);
+  photonTree_->Branch("gedReco_TPeta", &event_.gedReco_TPeta);
+  photonTree_->Branch("gedReco_TPphi", &event_.gedReco_TPphi);
+  photonTree_->Branch("gedReco_TPevent", &event_.gedReco_TPevent);
 
 }
 
@@ -232,6 +244,12 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.gedReco_eta.clear();
   event_.gedReco_phi.clear();
   for(auto&& b : event_.gedReco_misc) b.clear();
+  event_.gedReco_TPmetric.clear();
+  event_.gedReco_TPid.clear();
+  event_.gedReco_TPpt.clear();
+  event_.gedReco_TPeta.clear();
+  event_.gedReco_TPphi.clear();
+  event_.gedReco_TPevent.clear();
   for(size_t iPho=0; iPho<gedPhotonsH->size(); ++iPho) {
     const auto& pho = gedPhotonsH->at(iPho);
 
@@ -239,6 +257,23 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     event_.gedReco_eta.push_back(pho.eta());
     event_.gedReco_phi.push_back(pho.phi());
     for(auto&& b : event_.gedReco_misc) b.push_back(pho);
+
+    const TrackingParticle * matchedTp{nullptr};
+    float metric = std::numeric_limits<float>::infinity();
+    for (const auto& tp : *trackingParticlesH) {
+      if ( tp.parentVertex()->nSourceTracks() > 0 ) continue;
+      float mtmp = std::hypot(reco::deltaR(tp, pho), std::log10(tp.energy()/pho.energy()));
+      if ( mtmp < metric ) {
+        matchedTp = &tp;
+        metric = mtmp;
+      }
+    }
+    event_.gedReco_TPmetric.push_back(metric);
+    event_.gedReco_TPid.push_back(matchedTp->pdgId());
+    event_.gedReco_TPpt.push_back(matchedTp->pt());
+    event_.gedReco_TPeta.push_back(matchedTp->eta());
+    event_.gedReco_TPphi.push_back(matchedTp->phi());
+    event_.gedReco_TPevent.push_back(matchedTp->eventId().bunchCrossing()*1000+matchedTp->eventId().event());
   }
 
   auto parentId = [](const reco::GenParticle& p) {
