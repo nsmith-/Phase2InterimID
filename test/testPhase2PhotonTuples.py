@@ -32,6 +32,9 @@ process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     ),
 )
 process.ntupler.localRecoMisc = cms.PSet(
+    scEta = cms.string("superCluster().eta()"),
+    trkSumPtSolidConeDR04 = cms.string("trkSumPtSolidConeDR04()"),
+    nTrkSolidConeDR04 = cms.string("nTrkSolidConeDR04()"),
     full5x5_sigmaIetaIeta = cms.string("full5x5_sigmaIetaIeta()"),
     full5x5_sigmaIetaIphi = cms.string("full5x5_showerShapeVariables().sigmaIetaIphi"),
     full5x5_sigmaIphiIphi = cms.string("full5x5_showerShapeVariables().sigmaIphiIphi"),

@@ -79,6 +79,7 @@ namespace {
     std::vector<int> gen_id;
     std::vector<int> gen_parentId;
     std::vector<float> gen_fBrem;
+    std::vector<float> gen_conversionRho;
     std::vector<int> gen_nGeantTracks;
     std::vector<bool> gen_isPromptFinalState;
     std::vector<int> gen_iLocalReco;
@@ -148,6 +149,7 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonTree_->Branch("gen_id", &event_.gen_id);
   photonTree_->Branch("gen_parentId", &event_.gen_parentId);
   photonTree_->Branch("gen_fBrem", &event_.gen_fBrem);
+  photonTree_->Branch("gen_conversionRho", &event_.gen_conversionRho);
   photonTree_->Branch("gen_nGeantTracks", &event_.gen_nGeantTracks);
   photonTree_->Branch("gen_isPromptFinalState", &event_.gen_isPromptFinalState);
   photonTree_->Branch("gen_iLocalReco", &event_.gen_iLocalReco);
@@ -253,6 +255,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.gen_parentId.clear();
   event_.gen_isPromptFinalState.clear();
   event_.gen_fBrem.clear();
+  event_.gen_conversionRho.clear();
   event_.gen_nGeantTracks.clear();
   event_.gen_iLocalReco.clear();
   event_.gen_localRecoDeltaR.clear();
@@ -280,12 +283,18 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       }
     }
     float gen_fBrem = -1.;
+    float gen_conversionRho = -1.;
     int gen_nGeantTracks = -1.;
     if ( matchedTp != nullptr ) {
       gen_fBrem = (1-(matchedTp->g4Tracks().rbegin()->momentum().pt() - matchedTp->g4Tracks().begin()->momentum().pt())) / gp.pt();
+      auto firstHit = matchedTp->decayVertices_begin();
+      if ( firstHit != matchedTp->decayVertices_end() ) {
+        gen_conversionRho = firstHit->get()->position().rho();
+      }
       gen_nGeantTracks = matchedTp->g4Tracks().size();
     }
     event_.gen_fBrem.push_back(gen_fBrem);
+    event_.gen_conversionRho.push_back(gen_conversionRho);
     event_.gen_nGeantTracks.push_back(gen_nGeantTracks);
 
     int iLocalReco = -1;
