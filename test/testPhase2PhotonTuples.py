@@ -7,6 +7,7 @@ options = VarParsing('analysis')
 options.parseArguments()
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
+process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 process.load('Configuration.Geometry.GeometryExtended2023D17Reco_cff')
 process.load("RecoParticleFlow.PFClusterProducer.particleFlowRecHitHGC_cff")
 
@@ -20,8 +21,10 @@ process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     genCut = cms.string("pt>5 && status==1 && (abs(pdgId)==11 || pdgId==22)"),
     simClusters = cms.InputTag("mix:MergedCaloTruth"),
     caloParticles = cms.InputTag("mix:MergedCaloTruth"),
+    doPremixContent = cms.bool(False),
     trackingParticles = cms.InputTag("mix:MergedTrackTruth"),
     trackingVertices = cms.InputTag("mix:MergedTrackTruth"),
+    caloHits = cms.InputTag("g4SimHits:EcalHitsEB"),
     HGCalIDToolConfig = cms.PSet(
         HGCBHInput = cms.InputTag("HGCalRecHit","HGCHEBRecHits"),
         HGCEEInput = cms.InputTag("HGCalRecHit","HGCEERecHits"),
@@ -38,7 +41,12 @@ process.ntupler.localRecoMisc = cms.PSet(
     full5x5_sigmaIetaIeta = cms.string("full5x5_sigmaIetaIeta()"),
     full5x5_sigmaIetaIphi = cms.string("full5x5_showerShapeVariables().sigmaIetaIphi"),
     full5x5_sigmaIphiIphi = cms.string("full5x5_showerShapeVariables().sigmaIphiIphi"),
+    hadronicOverEm = cms.string("hadronicOverEm()"),
+    hadronicDepth1OverEm = cms.string("hadronicDepth1OverEm()"),
+    hadronicDepth2OverEm = cms.string("hadronicDepth2OverEm()"),
     hadTowOverEm = cms.string("hadTowOverEm()"),
+    hadTowDepth1OverEm = cms.string("hadTowDepth1OverEm()"),
+    hadTowDepth2OverEm = cms.string("hadTowDepth2OverEm()"),
     hasPixelSeed = cms.string("hasPixelSeed()"),
     chargedHadronIso = cms.string("chargedHadronIso()"),
     neutralHadronIso = cms.string("neutralHadronIso()"),

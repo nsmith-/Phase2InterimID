@@ -45,6 +45,7 @@
 #include "SimDataFormats/CaloAnalysis/interface/CaloParticleFwd.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticleFwd.h"
+#include "SimDataFormats/CaloHit/interface/PCaloHitContainer.h"
 
 namespace {
   template<typename T>
@@ -123,8 +124,10 @@ class Phase2PhotonTupler : public edm::one::EDAnalyzer<edm::one::SharedResources
     edm::EDGetTokenT<reco::GenParticleCollection> genParticlesToken_;
     edm::EDGetTokenT<SimClusterCollection> simClustersToken_;
     edm::EDGetTokenT<CaloParticleCollection> caloParticlesToken_;
+    bool doPremixContent_;
     edm::EDGetTokenT<TrackingParticleCollection> trackingParticlesToken_;
     edm::EDGetTokenT<TrackingVertexCollection> trackingVerticesToken_;
+    edm::EDGetTokenT<edm::PCaloHitContainer> caloHitsToken_;
 
     TTree * photonTree_;
     EventStruct event_;
@@ -138,8 +141,10 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   genParticlesToken_(consumes<reco::GenParticleCollection>(iConfig.getParameter<edm::InputTag>("genParticles"))),
   simClustersToken_(consumes<SimClusterCollection>(iConfig.getParameter<edm::InputTag>("simClusters"))),
   caloParticlesToken_(consumes<CaloParticleCollection>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
+  doPremixContent_(iConfig.getParameter<bool>("doPremixContent")),
   trackingParticlesToken_(consumes<TrackingParticleCollection>(iConfig.getParameter<edm::InputTag>("trackingParticles"))),
   trackingVerticesToken_(consumes<TrackingVertexCollection>(iConfig.getParameter<edm::InputTag>("trackingVertices"))),
+  caloHitsToken_(consumes<edm::PCaloHitContainer>(iConfig.getParameter<edm::InputTag>("caloHits"))),
   genCut_(iConfig.getParameter<std::string>("genCut"))
 {
   usesResource("TFileService");
@@ -218,10 +223,13 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   iEvent.getByToken(caloParticlesToken_, caloParticlesH);
 
   Handle<TrackingParticleCollection> trackingParticlesH;
-  iEvent.getByToken(trackingParticlesToken_, trackingParticlesH);
-
   Handle<TrackingVertexCollection> trackingVerticesH;
-  iEvent.getByToken(trackingVerticesToken_, trackingVerticesH);
+  Handle<PCaloHitContainer> caloHitsH;
+  if ( doPremixContent_ ) {
+    iEvent.getByToken(trackingParticlesToken_, trackingParticlesH);
+    iEvent.getByToken(trackingVerticesToken_, trackingVerticesH);
+    iEvent.getByToken(caloHitsToken_, caloHitsH);
+  }
 
   event_.run = iEvent.run();
   event_.lumi = iEvent.luminosityBlock();
@@ -258,22 +266,44 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     event_.gedReco_phi.push_back(pho.phi());
     for(auto&& b : event_.gedReco_misc) b.push_back(pho);
 
-    const TrackingParticle * matchedTp{nullptr};
-    float metric = std::numeric_limits<float>::infinity();
-    for (const auto& tp : *trackingParticlesH) {
-      if ( tp.parentVertex()->nSourceTracks() > 0 ) continue;
-      float mtmp = std::hypot(reco::deltaR(tp, pho), std::log10(tp.energy()/pho.energy()));
-      if ( mtmp < metric ) {
-        matchedTp = &tp;
-        metric = mtmp;
+    if ( doPremixContent_ ) {
+      std::cout << "New photon pt=" << pho.pt() << ", all calohits:" << std::endl;
+      for(auto hit_frac : pho.superCluster()->hitsAndFractions()) {
+        std::map<int, float> track_e;
+        for(auto ch : *caloHitsH) {
+          if ( ch.id() == hit_frac.first ) {
+            track_e[ch.geantTrackId()] += ch.energy();
+          }
+        }
+        for(auto te : track_e) {
+          for (const auto& tp : *trackingParticlesH) {
+            if ( tp.g4Tracks().size() > 0 and tp.g4Tracks()[0].trackId() == (unsigned) te.first ) {
+              std::cout << "G4 track in TP, sum e =" << te.second << std::endl;
+              std::cout << tp <<std::endl;
+            }
+          }
+        }
       }
+      std::cout << std::endl;
+
+      const TrackingParticle * matchedTp{nullptr};
+      float metric = std::numeric_limits<float>::infinity();
+      for (const auto& tp : *trackingParticlesH) {
+        // if ( tp.parentVertex()->nSourceTracks() > 0 ) continue;
+        // float mtmp = std::hypot(reco::deltaR(tp, pho), std::log10(tp.energy()/pho.energy()));
+        float mtmp = std::hypot((tp.vertex()-pho.caloPosition()).R(), 10*std::log10(tp.energy()/pho.energy()));
+        if ( mtmp < metric ) {
+          matchedTp = &tp;
+          metric = mtmp;
+        }
+      }
+      event_.gedReco_TPmetric.push_back(metric);
+      event_.gedReco_TPid.push_back(matchedTp->pdgId());
+      event_.gedReco_TPpt.push_back(matchedTp->pt());
+      event_.gedReco_TPeta.push_back(matchedTp->eta());
+      event_.gedReco_TPphi.push_back(matchedTp->phi());
+      event_.gedReco_TPevent.push_back(matchedTp->eventId().bunchCrossing()*1000+matchedTp->eventId().event());
     }
-    event_.gedReco_TPmetric.push_back(metric);
-    event_.gedReco_TPid.push_back(matchedTp->pdgId());
-    event_.gedReco_TPpt.push_back(matchedTp->pt());
-    event_.gedReco_TPeta.push_back(matchedTp->eta());
-    event_.gedReco_TPphi.push_back(matchedTp->phi());
-    event_.gedReco_TPevent.push_back(matchedTp->eventId().bunchCrossing()*1000+matchedTp->eventId().event());
   }
 
   auto parentId = [](const reco::GenParticle& p) {
@@ -306,31 +336,33 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     event_.gen_parentId.push_back(parentId(gp));
     event_.gen_isPromptFinalState.push_back(gp.isPromptFinalState());
 
-    // Find the corresponding TrackingParticle object
-    // which contains the GEANT history of the photons
-    const TrackingParticle * matchedTp{nullptr};
-    for (size_t iTp=0; iTp<trackingParticlesH->size(); ++iTp) {
-      const auto& tp = trackingParticlesH->at(iTp);
-      if ( tp.genParticles().empty() ) continue;
-      if ( tp.genParticles().at(0) == reco::GenParticleRef(genParticlesH, iGp) ) {
-        matchedTp = &tp;
-        break;
+    if ( doPremixContent_ ) {
+      // Find the corresponding TrackingParticle object
+      // which contains the GEANT history of the photons
+      const TrackingParticle * matchedTp{nullptr};
+      for (size_t iTp=0; iTp<trackingParticlesH->size(); ++iTp) {
+        const auto& tp = trackingParticlesH->at(iTp);
+        if ( tp.genParticles().empty() ) continue;
+        if ( tp.genParticles().at(0) == reco::GenParticleRef(genParticlesH, iGp) ) {
+          matchedTp = &tp;
+          break;
+        }
       }
-    }
-    float gen_fBrem = -1.;
-    float gen_conversionRho = -1.;
-    int gen_nGeantTracks = -1.;
-    if ( matchedTp != nullptr ) {
-      gen_fBrem = (1-(matchedTp->g4Tracks().rbegin()->momentum().pt() - matchedTp->g4Tracks().begin()->momentum().pt())) / gp.pt();
-      auto firstHit = matchedTp->decayVertices_begin();
-      if ( firstHit != matchedTp->decayVertices_end() ) {
-        gen_conversionRho = firstHit->get()->position().rho();
+      float gen_fBrem = -1.;
+      float gen_conversionRho = -1.;
+      int gen_nGeantTracks = -1.;
+      if ( matchedTp != nullptr ) {
+        gen_fBrem = (1-(matchedTp->g4Tracks().rbegin()->momentum().pt() - matchedTp->g4Tracks().begin()->momentum().pt())) / gp.pt();
+        auto firstHit = matchedTp->decayVertices_begin();
+        if ( firstHit != matchedTp->decayVertices_end() ) {
+          gen_conversionRho = firstHit->get()->position().rho();
+        }
+        gen_nGeantTracks = matchedTp->g4Tracks().size();
       }
-      gen_nGeantTracks = matchedTp->g4Tracks().size();
+      event_.gen_fBrem.push_back(gen_fBrem);
+      event_.gen_conversionRho.push_back(gen_conversionRho);
+      event_.gen_nGeantTracks.push_back(gen_nGeantTracks);
     }
-    event_.gen_fBrem.push_back(gen_fBrem);
-    event_.gen_conversionRho.push_back(gen_conversionRho);
-    event_.gen_nGeantTracks.push_back(gen_nGeantTracks);
 
     int iLocalReco = -1;
     float minDrLocalReco = 999.;
