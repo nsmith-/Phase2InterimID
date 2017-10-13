@@ -76,6 +76,34 @@ namespace {
       StringObjectFunction<T, false> fcn_;
   };
 
+  template<typename T>
+  class ValueMapBranch {
+    public:
+      ValueMapBranch(TTree* tree, std::string name, edm::EDGetTokenT<edm::ValueMap<float>>&& token) :
+        ptr_(std::make_unique<std::vector<float>>()),
+        branch_(tree->Branch(name.c_str(), ptr_.get())),
+        tok_(token)
+      {};
+
+      template<typename CollectionType>
+      void clearAndSet(const edm::Event& e, const edm::Handle<CollectionType>& coll) {
+        e.getByToken(tok_, map_);
+        collId_ = coll.id();
+        ptr_->clear();
+      };
+
+      void push_back(size_t i) {
+        ptr_->push_back(map_->get(collId_, i));
+      };
+
+    private:
+      std::unique_ptr<std::vector<float>> ptr_;
+      TBranch * branch_;
+      edm::EDGetTokenT<edm::ValueMap<float>> tok_;
+      edm::Handle<edm::ValueMap<float>> map_;
+      edm::ProductID collId_;
+  };
+
   struct EventStruct {
     Long64_t run;
     Long64_t lumi;
@@ -98,11 +126,13 @@ namespace {
     std::vector<float> localReco_eta;
     std::vector<float> localReco_phi;
     std::vector<EZBranch<reco::Photon>> localReco_misc;
+    std::vector<ValueMapBranch<reco::Photon>> localReco_valuemaps;
 
     std::vector<float> gedReco_pt;
     std::vector<float> gedReco_eta;
     std::vector<float> gedReco_phi;
     std::vector<EZBranch<reco::Photon>> gedReco_misc;
+    std::vector<ValueMapBranch<reco::Photon>> gedReco_valuemaps;
     std::vector<float> gedReco_TPmetric;
     std::vector<int> gedReco_TPid;
     std::vector<float> gedReco_TPpt;
@@ -186,6 +216,9 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
     if ( localRecoMisc.existsAs<std::string>(name) ) {
       event_.localReco_misc.emplace_back(photonTree_, "localReco_"+name, localRecoMisc.getParameter<std::string>(name));
     }
+    else if ( localRecoMisc.existsAs<edm::InputTag>(name) ) {
+      event_.localReco_valuemaps.emplace_back(photonTree_, "localReco_"+name, consumes<edm::ValueMap<float>>(localRecoMisc.getParameter<edm::InputTag>(name)));
+    }
   }
 
   photonTree_->Branch("gedReco_pt", &event_.gedReco_pt);
@@ -195,6 +228,9 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   for (auto name : gedRecoMisc.getParameterNames()) {
     if ( gedRecoMisc.existsAs<std::string>(name) ) {
       event_.gedReco_misc.emplace_back(photonTree_, "gedReco_"+name, gedRecoMisc.getParameter<std::string>(name));
+    }
+    else if ( gedRecoMisc.existsAs<edm::InputTag>(name) ) {
+      event_.gedReco_valuemaps.emplace_back(photonTree_, "gedReco_"+name, consumes<edm::ValueMap<float>>(gedRecoMisc.getParameter<edm::InputTag>(name)));
     }
   }
   photonTree_->Branch("gedReco_TPmetric", &event_.gedReco_TPmetric);
@@ -257,6 +293,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.localReco_eta.clear();
   event_.localReco_phi.clear();
   for(auto&& b : event_.localReco_misc) b.clear();
+  for(auto&& b : event_.localReco_valuemaps) b.clearAndSet(iEvent, photonsH);
   for(size_t iPho=0; iPho<photonsH->size(); ++iPho) {
     const auto& pho = photonsH->at(iPho);
 
@@ -264,12 +301,14 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     event_.localReco_eta.push_back(pho.eta());
     event_.localReco_phi.push_back(pho.phi());
     for(auto&& b : event_.localReco_misc) b.push_back(pho);
+    for(auto&& b : event_.localReco_valuemaps) b.push_back(iPho);
   }
 
   event_.gedReco_pt.clear();
   event_.gedReco_eta.clear();
   event_.gedReco_phi.clear();
   for(auto&& b : event_.gedReco_misc) b.clear();
+  for(auto&& b : event_.gedReco_valuemaps) b.clearAndSet(iEvent, photonsH);
   event_.gedReco_TPmetric.clear();
   event_.gedReco_TPid.clear();
   event_.gedReco_TPpt.clear();
@@ -283,6 +322,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     event_.gedReco_eta.push_back(pho.eta());
     event_.gedReco_phi.push_back(pho.phi());
     for(auto&& b : event_.gedReco_misc) b.push_back(pho);
+    for(auto&& b : event_.gedReco_valuemaps) b.push_back(iPho);
 
     if ( doPremixContent_ ) {
       std::cout << "New photon pt=" << pho.pt() << ", all calohits:" << std::endl;
