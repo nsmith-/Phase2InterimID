@@ -12,6 +12,7 @@ cmsrel CMSSW_9_3_2
 cd CMSSW_9_3_2/src
 cmsenv
 git cms-init
+git clone -b photon git@github.com:nsmith-/EgammaTools.git
 mkdir RecoEgamma && pushd RecoEgamma
 git clone git@github.com:nsmith-/Phase2InterimID.git
 popd

@@ -13,14 +13,11 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 10
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(options.maxEvents) )
 process.source = cms.Source ("PoolSource", fileNames = cms.untracked.vstring(options.inputFiles) )
 
-process.photonValues = cms.EDProducer("HGCalPhotonIDValueMapProducer",
-    # photons = cms.InputTag("photonsFromMultiCl"),
-    photons = cms.InputTag("photons"),
-)
+process.load("EgammaTools.EgammaAnalysis.HGCalPhotonIDValueMap_cfi")
 
 process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
-    # photons = cms.InputTag("photonsFromMultiCl"),
-    photons = cms.InputTag("photons"),
+    photons = cms.InputTag("photonsFromMultiCl"),
+    # photons = cms.InputTag("photons"),
     gedPhotons = cms.InputTag("gedPhotons"),
     genParticles = cms.InputTag("genParticles"),
     genCut = cms.string("pt>5 && status==1 && (abs(pdgId)==11 || pdgId==22)"),
@@ -57,8 +54,21 @@ process.ntupler.gedRecoMisc = cms.PSet(
 
 process.ntupler.localRecoMisc = cms.PSet(
     process.ntupler.gedRecoMisc,
-    dummy = cms.InputTag("photonValues:dummy"),
-    dummy2 = cms.InputTag("photonValues:dummy2"),
+    sigmaUU = cms.InputTag("HGCalPhotonIDValueMap:sigmaUU"),
+    sigmaVV = cms.InputTag("HGCalPhotonIDValueMap:sigmaVV"),
+    sigmaEE = cms.InputTag("HGCalPhotonIDValueMap:sigmaEE"),
+    sigmaPP = cms.InputTag("HGCalPhotonIDValueMap:sigmaPP"),
+    nLayers = cms.InputTag("HGCalPhotonIDValueMap:nLayers"),
+    firstLayer = cms.InputTag("HGCalPhotonIDValueMap:firstLayer"),
+    lastLayer = cms.InputTag("HGCalPhotonIDValueMap:lastLayer"),
+    firstLayerEnergy = cms.InputTag("HGCalPhotonIDValueMap:firstLayerEnergy"),
+    energyEE = cms.InputTag("HGCalPhotonIDValueMap:energyEE"),
+    energyFH = cms.InputTag("HGCalPhotonIDValueMap:energyFH"),
+    energyBH = cms.InputTag("HGCalPhotonIDValueMap:energyBH"),
+    measuredDepth = cms.InputTag("HGCalPhotonIDValueMap:measuredDepth"),
+    expectedDepth = cms.InputTag("HGCalPhotonIDValueMap:expectedDepth"),
+    expectedSigma = cms.InputTag("HGCalPhotonIDValueMap:expectedSigma"),
+    depthCompatibility = cms.InputTag("HGCalPhotonIDValueMap:depthCompatibility"),
 )
 
 process.TFileService = cms.Service("TFileService",
@@ -66,6 +76,6 @@ process.TFileService = cms.Service("TFileService",
 )
 
 process.p = cms.Path(
-    process.photonValues +
+    process.HGCalPhotonIDValueMap  +
     process.ntupler
 )
