@@ -47,6 +47,12 @@
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticleFwd.h"
 #include "SimDataFormats/CaloHit/interface/PCaloHitContainer.h"
 
+#include "SimDataFormats/Track/interface/SimTrack.h"
+#include "SimDataFormats/Vertex/interface/SimVertex.h"
+#include "RecoEgamma/EgammaMCTools/interface/ElectronMCTruth.h"
+#include "RecoEgamma/EgammaMCTools/interface/PhotonMCTruth.h"
+#include "RecoEgamma/EgammaMCTools/interface/PhotonMCTruthFinder.h"
+
 namespace {
   template<typename T>
   class EZBranch {
@@ -124,6 +130,8 @@ class Phase2PhotonTupler : public edm::one::EDAnalyzer<edm::one::SharedResources
     edm::EDGetTokenT<reco::GenParticleCollection> genParticlesToken_;
     edm::EDGetTokenT<SimClusterCollection> simClustersToken_;
     edm::EDGetTokenT<CaloParticleCollection> caloParticlesToken_;
+    edm::EDGetTokenT<std::vector<SimTrack>> simTracksToken_;
+    edm::EDGetTokenT<std::vector<SimVertex>> simVerticesToken_;
     bool doPremixContent_;
     edm::EDGetTokenT<TrackingParticleCollection> trackingParticlesToken_;
     edm::EDGetTokenT<TrackingVertexCollection> trackingVerticesToken_;
@@ -141,6 +149,8 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   genParticlesToken_(consumes<reco::GenParticleCollection>(iConfig.getParameter<edm::InputTag>("genParticles"))),
   simClustersToken_(consumes<SimClusterCollection>(iConfig.getParameter<edm::InputTag>("simClusters"))),
   caloParticlesToken_(consumes<CaloParticleCollection>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
+  simTracksToken_(consumes<std::vector<SimTrack>>(iConfig.getParameter<edm::InputTag>("simTracksSrc"))),
+  simVerticesToken_(consumes<std::vector<SimVertex>>(iConfig.getParameter<edm::InputTag>("simVerticesSrc"))),
   doPremixContent_(iConfig.getParameter<bool>("doPremixContent")),
   trackingParticlesToken_(consumes<TrackingParticleCollection>(iConfig.getParameter<edm::InputTag>("trackingParticles"))),
   trackingVerticesToken_(consumes<TrackingVertexCollection>(iConfig.getParameter<edm::InputTag>("trackingVertices"))),
@@ -230,6 +240,14 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     iEvent.getByToken(trackingVerticesToken_, trackingVerticesH);
     iEvent.getByToken(caloHitsToken_, caloHitsH);
   }
+
+  Handle<std::vector<SimTrack>> simTracks;
+  iEvent.getByToken(simTracksToken_ ,simTracks);
+  Handle<std::vector<SimVertex>> simVertices;
+  iEvent.getByToken(simVerticesToken_ ,simVertices);
+  std::unique_ptr<PhotonMCTruthFinder> thePhotonMCTruthFinder_(new PhotonMCTruthFinder());
+  std::vector<PhotonMCTruth> mcPhotons;
+  mcPhotons = thePhotonMCTruthFinder_->find(*simTracks,  *simVertices);
 
   event_.run = iEvent.run();
   event_.lumi = iEvent.luminosityBlock();
@@ -360,9 +378,27 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         gen_nGeantTracks = matchedTp->g4Tracks().size();
       }
       event_.gen_fBrem.push_back(gen_fBrem);
-      event_.gen_conversionRho.push_back(gen_conversionRho);
+      // event_.gen_conversionRho.push_back(gen_conversionRho);
+      (void) gen_conversionRho;
       event_.gen_nGeantTracks.push_back(gen_nGeantTracks);
     }
+
+    float conversionRho = -1.;
+    for(auto& pmc : mcPhotons) {
+      // auto simTrack = std::find_if(simTracks->begin(), simTracks->end(), [pmc](const SimTrack& t) { return t.trackId() == (size_t) pmc.trackId(); });
+      // size_t iGenPart = simTrack->genpartIndex();
+      // (but this is genParticles not prunedGenParticles)
+      // This is easier than the more correct alternative, first one is always initial G4 track
+      if ( reco::deltaR(pmc.fourMomentum(), gp.p4()) < 0.001 ) {
+        // PhotonMCTruth::vertex() is the conversion vertex (not mother vertex)
+        // So the first one will always have isAConversion() true, but where it
+        // interacted tells us if it matters, since all photons will at least interact
+        // by the time they hit ECAL
+        conversionRho = pmc.vertex().perp();
+        break;
+      }
+    }
+    event_.gen_conversionRho.push_back(conversionRho);
 
     int iLocalReco = -1;
     float minDrLocalReco = 999.;

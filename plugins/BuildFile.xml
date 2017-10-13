@@ -8,4 +8,5 @@
 <use name="DataFormats/HepMCCandidate"/>
 <use name="SimDataFormats/CaloAnalysis"/>
 <use name="SimDataFormats/TrackingAnalysis"/>
+<use name="RecoEgamma/EgammaMCTools"/>
 <flags EDM_PLUGIN="1"/>
