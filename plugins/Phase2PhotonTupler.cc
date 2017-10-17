@@ -108,6 +108,7 @@ namespace {
     Long64_t run;
     Long64_t lumi;
     Long64_t event;
+    float rho;
     std::vector<float> gen_pt;
     std::vector<float> gen_eta;
     std::vector<float> gen_phi;
@@ -115,6 +116,7 @@ namespace {
     std::vector<int> gen_parentId;
     std::vector<float> gen_fBrem;
     std::vector<float> gen_conversionRho;
+    std::vector<float> gen_conversionZ;
     std::vector<int> gen_nGeantTracks;
     std::vector<bool> gen_isPromptFinalState;
     std::vector<int> gen_iLocalReco;
@@ -125,12 +127,14 @@ namespace {
     std::vector<float> localReco_pt;
     std::vector<float> localReco_eta;
     std::vector<float> localReco_phi;
+    std::vector<int> localReco_iGen;
     std::vector<EZBranch<reco::Photon>> localReco_misc;
     std::vector<ValueMapBranch<reco::Photon>> localReco_valuemaps;
 
     std::vector<float> gedReco_pt;
     std::vector<float> gedReco_eta;
     std::vector<float> gedReco_phi;
+    std::vector<int> gedReco_iGen;
     std::vector<EZBranch<reco::Photon>> gedReco_misc;
     std::vector<ValueMapBranch<reco::Photon>> gedReco_valuemaps;
     std::vector<float> gedReco_TPmetric;
@@ -162,6 +166,8 @@ class Phase2PhotonTupler : public edm::one::EDAnalyzer<edm::one::SharedResources
     edm::EDGetTokenT<CaloParticleCollection> caloParticlesToken_;
     edm::EDGetTokenT<std::vector<SimTrack>> simTracksToken_;
     edm::EDGetTokenT<std::vector<SimVertex>> simVerticesToken_;
+    edm::EDGetTokenT<double> rhoToken_;
+
     bool doPremixContent_;
     edm::EDGetTokenT<TrackingParticleCollection> trackingParticlesToken_;
     edm::EDGetTokenT<TrackingVertexCollection> trackingVerticesToken_;
@@ -181,6 +187,7 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   caloParticlesToken_(consumes<CaloParticleCollection>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
   simTracksToken_(consumes<std::vector<SimTrack>>(iConfig.getParameter<edm::InputTag>("simTracksSrc"))),
   simVerticesToken_(consumes<std::vector<SimVertex>>(iConfig.getParameter<edm::InputTag>("simVerticesSrc"))),
+  rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoSrc"))),
   doPremixContent_(iConfig.getParameter<bool>("doPremixContent")),
   trackingParticlesToken_(consumes<TrackingParticleCollection>(iConfig.getParameter<edm::InputTag>("trackingParticles"))),
   trackingVerticesToken_(consumes<TrackingVertexCollection>(iConfig.getParameter<edm::InputTag>("trackingVertices"))),
@@ -194,6 +201,7 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonTree_->Branch("run", &event_.run);
   photonTree_->Branch("lumi", &event_.lumi);
   photonTree_->Branch("event", &event_.event);
+  photonTree_->Branch("rho",  &event_.rho, "rho/F");
   photonTree_->Branch("gen_pt", &event_.gen_pt);
   photonTree_->Branch("gen_eta", &event_.gen_eta);
   photonTree_->Branch("gen_phi", &event_.gen_phi);
@@ -201,6 +209,7 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonTree_->Branch("gen_parentId", &event_.gen_parentId);
   photonTree_->Branch("gen_fBrem", &event_.gen_fBrem);
   photonTree_->Branch("gen_conversionRho", &event_.gen_conversionRho);
+  photonTree_->Branch("gen_conversionZ", &event_.gen_conversionZ);
   photonTree_->Branch("gen_nGeantTracks", &event_.gen_nGeantTracks);
   photonTree_->Branch("gen_isPromptFinalState", &event_.gen_isPromptFinalState);
   photonTree_->Branch("gen_iLocalReco", &event_.gen_iLocalReco);
@@ -211,6 +220,7 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonTree_->Branch("localReco_pt", &event_.localReco_pt);
   photonTree_->Branch("localReco_eta", &event_.localReco_eta);
   photonTree_->Branch("localReco_phi", &event_.localReco_phi);
+  photonTree_->Branch("localReco_iGen", &event_.localReco_iGen);
   auto localRecoMisc = iConfig.getParameter<edm::ParameterSet>("localRecoMisc");
   for (auto name : localRecoMisc.getParameterNames()) {
     if ( localRecoMisc.existsAs<std::string>(name) ) {
@@ -224,6 +234,7 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonTree_->Branch("gedReco_pt", &event_.gedReco_pt);
   photonTree_->Branch("gedReco_eta", &event_.gedReco_eta);
   photonTree_->Branch("gedReco_phi", &event_.gedReco_phi);
+  photonTree_->Branch("gedReco_iGen", &event_.gedReco_iGen);
   auto gedRecoMisc = iConfig.getParameter<edm::ParameterSet>("gedRecoMisc");
   for (auto name : gedRecoMisc.getParameterNames()) {
     if ( gedRecoMisc.existsAs<std::string>(name) ) {
@@ -268,6 +279,9 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   Handle<CaloParticleCollection> caloParticlesH;
   iEvent.getByToken(caloParticlesToken_, caloParticlesH);
 
+  Handle<double> rhoH;
+  iEvent.getByToken(rhoToken_, rhoH);
+
   Handle<TrackingParticleCollection> trackingParticlesH;
   Handle<TrackingVertexCollection> trackingVerticesH;
   Handle<PCaloHitContainer> caloHitsH;
@@ -288,6 +302,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.run = iEvent.run();
   event_.lumi = iEvent.luminosityBlock();
   event_.event = iEvent.id().event();
+
+  event_.rho = *rhoH;
 
   event_.localReco_pt.clear();
   event_.localReco_eta.clear();
@@ -379,6 +395,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.gen_isPromptFinalState.clear();
   event_.gen_fBrem.clear();
   event_.gen_conversionRho.clear();
+  event_.gen_conversionZ.clear();
   event_.gen_nGeantTracks.clear();
   event_.gen_iLocalReco.clear();
   event_.gen_localRecoDeltaR.clear();
@@ -424,6 +441,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     }
 
     float conversionRho = -1.;
+    float conversionZ = 0.;
     for(auto& pmc : mcPhotons) {
       // auto simTrack = std::find_if(simTracks->begin(), simTracks->end(), [pmc](const SimTrack& t) { return t.trackId() == (size_t) pmc.trackId(); });
       // size_t iGenPart = simTrack->genpartIndex();
@@ -435,10 +453,12 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         // interacted tells us if it matters, since all photons will at least interact
         // by the time they hit ECAL
         conversionRho = pmc.vertex().perp();
+        conversionZ = pmc.vertex().z();
         break;
       }
     }
     event_.gen_conversionRho.push_back(conversionRho);
+    event_.gen_conversionZ.push_back(conversionZ);
 
     int iLocalReco = -1;
     float minDrLocalReco = 999.;
@@ -463,6 +483,39 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     }
     event_.gen_iGedReco.push_back(iGedReco);
     event_.gen_gedRecoDeltaR.push_back(minDrGedReco);
+  }
+  
+  // Now do reco -> gen match
+  // which theoretically is not the same as gen -> reco
+  event_.localReco_iGen.clear();
+  for (size_t iReco=0; iReco<event_.localReco_pt.size(); ++iReco) {
+    int local_iGen = -1;
+    float minDrLocalGen = 999.;
+    for (size_t iGen=0; iGen<event_.gen_pt.size(); ++iGen) {
+      float drTemp = reco::deltaR(event_.gen_eta[iGen], event_.gen_phi[iGen], event_.localReco_eta[iReco], event_.localReco_phi[iReco]);
+      if ( drTemp < minDrLocalGen ) {
+        local_iGen = iGen;
+        minDrLocalGen = drTemp;
+      }
+    }
+    // Define 'no match'
+    if ( minDrLocalGen > 0.1 ) local_iGen = -1;
+    event_.localReco_iGen.push_back(local_iGen);
+  }
+  event_.gedReco_iGen.clear();
+  for (size_t iReco=0; iReco<event_.gedReco_pt.size(); ++iReco) {
+    int ged_iGen = -1;
+    float minDrGedGen = 999.;
+    for (size_t iGen=0; iGen<event_.gen_pt.size(); ++iGen) {
+      float drTemp = reco::deltaR(event_.gen_eta[iGen], event_.gen_phi[iGen], event_.gedReco_eta[iReco], event_.gedReco_phi[iReco]);
+      if ( drTemp < minDrGedGen ) {
+        ged_iGen = iGen;
+        minDrGedGen = drTemp;
+      }
+    }
+    // Define 'no match'
+    if ( minDrGedGen > 0.1 ) ged_iGen = -1;
+    event_.gedReco_iGen.push_back(ged_iGen);
   }
 
   photonTree_->Fill();

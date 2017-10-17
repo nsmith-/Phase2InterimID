@@ -6,6 +6,10 @@ process = cms.Process("Ntupler", eras.Phase2)
 options = VarParsing('analysis')
 options.parseArguments()
 
+process.options = cms.untracked.PSet(
+    wantSummary = cms.untracked.bool(True),
+)
+
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load('Configuration.Geometry.GeometryExtended2023D17Reco_cff')
 
@@ -13,18 +17,22 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 10
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(options.maxEvents) )
 process.source = cms.Source ("PoolSource", fileNames = cms.untracked.vstring(options.inputFiles) )
 
+# phoSrc = cms.InputTag("photons")
+phoSrc = cms.InputTag("photonsFromMultiCl")
+
 process.load("EgammaTools.EgammaAnalysis.HGCalPhotonIDValueMap_cfi")
+process.HGCalPhotonIDValueMap.photons = phoSrc
 
 process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
-    photons = cms.InputTag("photonsFromMultiCl"),
-    # photons = cms.InputTag("photons"),
+    photons = phoSrc,
     gedPhotons = cms.InputTag("gedPhotons"),
     genParticles = cms.InputTag("genParticles"),
-    genCut = cms.string("pt>5 && status==1 && (abs(pdgId)==11 || pdgId==22)"),
+    genCut = cms.string("pt>5 && status==1 && pdgId==22"),
     simClusters = cms.InputTag("mix:MergedCaloTruth"),
     caloParticles = cms.InputTag("mix:MergedCaloTruth"),
     simTracksSrc = cms.InputTag("g4SimHits"),
     simVerticesSrc = cms.InputTag("g4SimHits"),
+    rhoSrc = cms.InputTag("fixedGridRhoFastjetAll"),
     doPremixContent = cms.bool(False),
     trackingParticles = cms.InputTag("mix:MergedTrackTruth"),
     trackingVertices = cms.InputTag("mix:MergedTrackTruth"),
@@ -61,7 +69,6 @@ process.ntupler.localRecoMisc = cms.PSet(
     nLayers = cms.InputTag("HGCalPhotonIDValueMap:nLayers"),
     firstLayer = cms.InputTag("HGCalPhotonIDValueMap:firstLayer"),
     lastLayer = cms.InputTag("HGCalPhotonIDValueMap:lastLayer"),
-    firstLayerEnergy = cms.InputTag("HGCalPhotonIDValueMap:firstLayerEnergy"),
     energyEE = cms.InputTag("HGCalPhotonIDValueMap:energyEE"),
     energyFH = cms.InputTag("HGCalPhotonIDValueMap:energyFH"),
     energyBH = cms.InputTag("HGCalPhotonIDValueMap:energyBH"),
@@ -69,6 +76,11 @@ process.ntupler.localRecoMisc = cms.PSet(
     expectedDepth = cms.InputTag("HGCalPhotonIDValueMap:expectedDepth"),
     expectedSigma = cms.InputTag("HGCalPhotonIDValueMap:expectedSigma"),
     depthCompatibility = cms.InputTag("HGCalPhotonIDValueMap:depthCompatibility"),
+    caloIsoRing0 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing0"),
+    caloIsoRing1 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing1"),
+    caloIsoRing2 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing2"),
+    caloIsoRing3 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing3"),
+    caloIsoRing4 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing4"),
 )
 
 process.TFileService = cms.Service("TFileService",
