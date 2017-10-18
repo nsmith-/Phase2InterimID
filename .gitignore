@@ -1,2 +1,4 @@
 *.root
 *.pyc
+test/crab_*
+test/default
