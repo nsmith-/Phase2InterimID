@@ -1,33 +1,26 @@
 import ROOT
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
-import array
 import os
+from bdtCommon import BarrelIDConfig, EndcapIDConfig
 
-vars = [
-    "sigmaUU",
-    "sigmaVV",
-    "nLayers",
-    "firstLayer",
-    "FHoverE",
-    "depthCompatibility",
-    "isoRing0",
-    "isoRing1",
-    "isoRing2",
-]
+idConfig = BarrelIDConfig
+# idConfig = EndcapIDConfig
+
 truecut = "isTrue"
 bkgcut = "!isTrue"
 sigCut = ROOT.TCut(truecut)
 bkgCut = ROOT.TCut(bkgcut)
 
-fIn = ROOT.TFile.Open("tmvain.root")
+fIn = ROOT.TFile.Open("%sin.root" % idConfig.name)
 tIn = fIn.Get("tree")
-fOut = ROOT.TFile("tmvaout.root", "recreate")
+fOut = ROOT.TFile("%sout.root" % idConfig.name, "recreate")
 # Transformations=I;D;P;G,D:
-w = ROOT.TMVA.Factory("phase2photons", fOut, "!V:!Silent:Color:DrawProgressBar:AnalysisType=Classification")
+w = ROOT.TMVA.Factory(idConfig.name, fOut, "!V:!Silent:Color:DrawProgressBar:AnalysisType=Classification")
 d = ROOT.TMVA.DataLoader()
-for var in vars:
-    d.AddVariable(var)
+for var in idConfig.varmap:
+    if var.train:
+        d.AddVariable(var.name)
 d.SetInputTrees(tIn, sigCut, bkgCut)
 d.SetWeightExpression("weight")
 
@@ -39,7 +32,7 @@ w.TestAllMethods()
 w.EvaluateAllMethods()
 
 fOut.Close()
-ROOT.TMVA.mvas("default", "tmvaout.root", ROOT.TMVA.kCompareType)
+ROOT.TMVA.mvas("default", "%sout.root" % idConfig.name, ROOT.TMVA.kCompareType)
 ROOT.gPad.Print("bdt_overtrain.pdf")
 
 #g = ROOT.TMVA.TMVAGui("tmvaout.root")
