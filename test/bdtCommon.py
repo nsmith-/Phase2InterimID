@@ -33,6 +33,7 @@ class BarrelIDConfig:
     name = "barrelPhotonID"
     trainingCut = "gedReco_pt>25 && abs(gedReco_eta)<1.4"
     trueCut = trainingCut + " && gedReco_iGen>=0 && gen_parentId[gedReco_iGen] == 25"
+    bkgCut = trainingCut + " && (gedReco_iGen<0 || gen_id[gedReco_iGen] != 22)"
     varmap = [
         Variable("pt", "gedReco_pt", train=False),
         Variable("abseta", "abs(gedReco_eta)", train=False),
@@ -49,12 +50,13 @@ class BarrelIDConfig:
     ]
     reweightvar1, reweightvar2, trainvar, truevar = varmap[0:4]
     hreweight_def = ROOT.TH2D("hreweight_def_barrel", "Bkg to signal reweight;Photon p_{T} (GeV);Photon |#eta|", 15, 25, 100, 4, 0., 1.4)
-
+    
 
 class EndcapIDConfig:
     name = "endcapPhotonID"
     trainingCut = "localReco_pt>25 && abs(localReco_eta)>1.5 && localReco_nLayers > 0 && localReco_depthCompatibility > -999."
     trueCut = trainingCut + " && localReco_iGen>=0 && gen_parentId[localReco_iGen] == 25"
+    bkgCut = trainingCut + " && (localReco_iGen<0 || gen_id[localReco_iGen] != 22)"
     varmap = [
         Variable("pt", "localReco_pt", train=False),
         Variable("abseta", "abs(localReco_eta)", train=False),
@@ -74,3 +76,23 @@ class EndcapIDConfig:
     ]
     reweightvar1, reweightvar2, trainvar, truevar = varmap[0:4]
     hreweight_def = ROOT.TH2D("hreweight_def_endcap", "Bkg to signal reweight;Photon p_{T} (GeV);Photon |#eta|", 15, 25, 100, 2, 1.5, 3.)
+
+
+def makeReader(config):
+    if not hasattr(config, "_reader"):
+        config._reader = ROOT.TMVA.Reader("!Color:Silent")
+        config._reader.SetName(config.name+"Reader")
+        # https://root.cern.ch/doc/v606/Reader_8h_source.html#l00126 (wtf?)
+        iReader = ROOT.gROOT.GetListOfSpecials().GetSize()
+        ROOT.gROOT.GetListOfSpecials().Add(config._reader)
+        params = [v for v in config.varmap if v.train]
+        for i, var in enumerate(params):
+            config._reader.AddVariable(var.name, var._mem)
+        config._reader.BookMVA(config.name, "default/weights/%s_BDT.weights.xml" % config.name)
+        fcnArgs = ", ".join("float "+chr(i+97) for i in range(len(params)))
+        fcnBodyVars = ", ".join(chr(i+97) for i in range(len(params)))
+        evalFcn = 'double eval%s(%s){auto ptr = (TMVA::Reader*) gROOT->GetListOfSpecials()->At(%d); const std::vector<float> in{%s}; return ptr->EvaluateMVA(in, "%s");}' % (config.name, fcnArgs, iReader, fcnBodyVars, config.name)
+        ROOT.gInterpreter.Declare(evalFcn)
+        config.evalFcn = 'eval%s(%s)' % (config.name, ", ".join(p.formula for p in params))
+    return config._reader
+
