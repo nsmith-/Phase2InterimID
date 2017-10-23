@@ -1,14 +1,15 @@
 import ROOT
-import os
 import array
 import warnings
+import sys
 from bdtCommon import BarrelIDConfig, EndcapIDConfig
 
 # https://root-forum.cern.ch/t/creating-converter-when-using-ttreeformula/13845/2
 warnings.filterwarnings( action='ignore', category=RuntimeWarning, message='creating converter.*' )
 
-idConfig = BarrelIDConfig
-# idConfig = EndcapIDConfig
+idConfig = EndcapIDConfig
+if sys.argv[-1] == 'b':
+    idConfig = BarrelIDConfig
 
 filenames = [
     "/eos/cms/store/user/ncsmith/932phoID/RelValH125GGgluonfusion_14/CMSSW_9_3_2-PU25ns_93X_upgrade2023_realistic_v2_2023D17PU200EA1000-v1/171017_222812/0000/output_1.root",
@@ -38,7 +39,7 @@ hreweight = hreweight_tmp.Clone("hreweight")
 hreweight_tmp.Reset()
 for tree in trees:
     ROOT.gROOT.cd()
-    tree.Draw("%s:%s>>hreweight_tmp" % (idConfig.reweightvar2.formula, idConfig.reweightvar1.formula), idConfig.trainingCut, "goff")
+    tree.Draw("%s:%s>>+hreweight_tmp" % (idConfig.reweightvar2.formula, idConfig.reweightvar1.formula), idConfig.trainingCut, "goff")
 hreweight.Divide(hreweight_tmp)
 
 fout = ROOT.TFile("%sin.root" % idConfig.name, "recreate")

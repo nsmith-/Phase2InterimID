@@ -1,11 +1,13 @@
 import ROOT
-ROOT.gROOT.SetBatch(True)
-ROOT.PyConfig.IgnoreCommandLineOptions = True
-import os
+import sys
 from bdtCommon import BarrelIDConfig, EndcapIDConfig
 
-idConfig = BarrelIDConfig
-# idConfig = EndcapIDConfig
+ROOT.gROOT.SetBatch(True)
+ROOT.PyConfig.IgnoreCommandLineOptions = True
+
+idConfig = EndcapIDConfig
+if sys.argv[-1] == 'b':
+    idConfig = BarrelIDConfig
 
 truecut = "isTrue"
 bkgcut = "!isTrue"

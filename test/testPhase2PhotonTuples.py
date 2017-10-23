@@ -13,7 +13,7 @@ process.options = cms.untracked.PSet(
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load('Configuration.Geometry.GeometryExtended2023D17Reco_cff')
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 10
+process.MessageLogger.cerr.FwkReport.reportEvery = 1
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(options.maxEvents) )
 process.source = cms.Source ("PoolSource", fileNames = cms.untracked.vstring(options.inputFiles) )
 
@@ -27,7 +27,7 @@ process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     photons = phoSrc,
     gedPhotons = cms.InputTag("gedPhotons"),
     genParticles = cms.InputTag("genParticles"),
-    genCut = cms.string("pt>5 && status==1 && pdgId==22"),
+    genCut = cms.string("pt>5 && status==1 && (abs(pdgId)==11 || pdgId==22)"),
     simClusters = cms.InputTag("mix:MergedCaloTruth"),
     caloParticles = cms.InputTag("mix:MergedCaloTruth"),
     simTracksSrc = cms.InputTag("g4SimHits"),
@@ -62,26 +62,11 @@ process.ntupler.gedRecoMisc = cms.PSet(
 
 process.ntupler.localRecoMisc = cms.PSet(
     process.ntupler.gedRecoMisc,
-    sigmaUU = cms.InputTag("HGCalPhotonIDValueMap:sigmaUU"),
-    sigmaVV = cms.InputTag("HGCalPhotonIDValueMap:sigmaVV"),
-    sigmaEE = cms.InputTag("HGCalPhotonIDValueMap:sigmaEE"),
-    sigmaPP = cms.InputTag("HGCalPhotonIDValueMap:sigmaPP"),
-    nLayers = cms.InputTag("HGCalPhotonIDValueMap:nLayers"),
-    firstLayer = cms.InputTag("HGCalPhotonIDValueMap:firstLayer"),
-    lastLayer = cms.InputTag("HGCalPhotonIDValueMap:lastLayer"),
-    energyEE = cms.InputTag("HGCalPhotonIDValueMap:energyEE"),
-    energyFH = cms.InputTag("HGCalPhotonIDValueMap:energyFH"),
-    energyBH = cms.InputTag("HGCalPhotonIDValueMap:energyBH"),
-    measuredDepth = cms.InputTag("HGCalPhotonIDValueMap:measuredDepth"),
-    expectedDepth = cms.InputTag("HGCalPhotonIDValueMap:expectedDepth"),
-    expectedSigma = cms.InputTag("HGCalPhotonIDValueMap:expectedSigma"),
-    depthCompatibility = cms.InputTag("HGCalPhotonIDValueMap:depthCompatibility"),
-    caloIsoRing0 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing0"),
-    caloIsoRing1 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing1"),
-    caloIsoRing2 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing2"),
-    caloIsoRing3 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing3"),
-    caloIsoRing4 = cms.InputTag("HGCalPhotonIDValueMap:caloIsoRing4"),
+    seed_det = cms.string("superCluster().seed().hitsAndFractions().at(0).first.det()"),
+    seed_subdet = cms.string("superCluster().seed().hitsAndFractions().at(0).first.subdetId()"),
 )
+for key in process.HGCalPhotonIDValueMap.variables:
+    setattr(process.ntupler.localRecoMisc, key, cms.InputTag("HGCalPhotonIDValueMap", key))
 
 process.TFileService = cms.Service("TFileService",
     fileName = cms.string(options.outputFile)
@@ -91,3 +76,4 @@ process.p = cms.Path(
     process.HGCalPhotonIDValueMap  +
     process.ntupler
 )
+

@@ -69,6 +69,8 @@ class EndcapIDConfig:
         Variable("isoRing0", "localReco_caloIsoRing0"),
         Variable("isoRing1", "localReco_caloIsoRing1"),
         Variable("isoRing2", "localReco_caloIsoRing2"),
+        Variable("isoRing3", "localReco_caloIsoRing3"),
+        Variable("isoRing4", "localReco_caloIsoRing4"),
     ]
     reweightvar1, reweightvar2, trainvar, truevar = varmap[0:4]
     hreweight_def = ROOT.TH2D("hreweight_def_endcap", "Bkg to signal reweight;Photon p_{T} (GeV);Photon |#eta|", 15, 25, 100, 2, 1.5, 3.)
