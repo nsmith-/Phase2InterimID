@@ -13,7 +13,7 @@ process.options = cms.untracked.PSet(
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load('Configuration.Geometry.GeometryExtended2023D17Reco_cff')
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 1
+process.MessageLogger.cerr.FwkReport.reportEvery = 100
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(options.maxEvents) )
 process.source = cms.Source ("PoolSource", fileNames = cms.untracked.vstring(options.inputFiles) )
 

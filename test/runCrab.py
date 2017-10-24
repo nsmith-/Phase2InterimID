@@ -4,16 +4,17 @@ config = config()
 config.General.workArea = 'crab_phase2photons'
 config.General.transferOutputs = True
 config.General.transferLogs = False
-config.General.instance = 'preprod'
 
 config.JobType.pluginName = 'Analysis'
 config.JobType.psetName = 'testPhase2PhotonTuples.py'
 
-config.Data.inputDBS = 'global'
 config.Data.splitting = 'FileBased'
 config.Data.unitsPerJob = 5
 #config.Data.splitting = 'Automatic'
-config.Data.outLFNDirBase = '/store/user/%s/932phoID' % (getUsernameFromSiteDB())
+#config.General.instance = 'preprod'
+
+config.Data.inputDBS = 'global'
+config.Data.outLFNDirBase = '/store/user/%s/932phoID_test' % (getUsernameFromSiteDB())
 config.Data.publication = False
 config.Data.allowNonValidInputDataset = True
 # config.Data.totalUnits = 20
