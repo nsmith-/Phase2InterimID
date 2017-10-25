@@ -9,4 +9,5 @@
 <use name="SimDataFormats/CaloAnalysis"/>
 <use name="SimDataFormats/TrackingAnalysis"/>
 <use name="RecoEgamma/EgammaMCTools"/>
+<use name="RecoEgamma/EgammaTools"/>
 <flags EDM_PLUGIN="1"/>

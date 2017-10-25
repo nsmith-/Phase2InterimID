@@ -1,20 +1,21 @@
 from CRABClient.UserUtilities import config, getUsernameFromSiteDB
 config = config()
 
-config.General.workArea = 'crab_phase2photons'
+config.General.workArea = 'crab_phase2photons_round2'
 config.General.transferOutputs = True
-config.General.transferLogs = False
+config.General.transferLogs = True
 
 config.JobType.pluginName = 'Analysis'
 config.JobType.psetName = 'testPhase2PhotonTuples.py'
+config.JobType.numCores = 4
 
 config.Data.splitting = 'FileBased'
-config.Data.unitsPerJob = 5
+config.Data.unitsPerJob = 50
 #config.Data.splitting = 'Automatic'
 #config.General.instance = 'preprod'
 
 config.Data.inputDBS = 'global'
-config.Data.outLFNDirBase = '/store/user/%s/932phoID_test' % (getUsernameFromSiteDB())
+config.Data.outLFNDirBase = '/store/user/%s/932phoID_round2' % (getUsernameFromSiteDB())
 config.Data.publication = False
 config.Data.allowNonValidInputDataset = True
 # config.Data.totalUnits = 20
@@ -33,8 +34,6 @@ pds_relval = [
 ]
 
 pds_photon = [
-    '/DYToLL-M-50_0J_14TeV-madgraphMLM-pythia8/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
-    '/DYToLL-M-50_1J_14TeV-madgraphMLM-pythia8/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
     '/DYToLL-M-50_2J_14TeV-madgraphMLM-pythia8/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
     '/DYToLL-M-50_3J_14TeV-madgraphMLM-pythia8/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
     '/DiPhotonJetsBox_MGG-80toInf_14TeV-Sherpa/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',

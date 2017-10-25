@@ -38,6 +38,9 @@
 
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
 #include "DataFormats/EgammaCandidates/interface/PhotonFwd.h"
+#include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
+#include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
+#include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "SimDataFormats/CaloAnalysis/interface/SimCluster.h"
 #include "SimDataFormats/CaloAnalysis/interface/SimClusterFwd.h"
@@ -130,6 +133,8 @@ namespace {
     std::vector<int> localReco_iGen;
     std::vector<EZBranch<reco::Photon>> localReco_misc;
     std::vector<ValueMapBranch<reco::Photon>> localReco_valuemaps;
+    std::vector<float> localReco_matchedGsfChi2;
+    std::vector<float> localReco_matchedGsfLostHits;
 
     std::vector<float> gedReco_pt;
     std::vector<float> gedReco_eta;
@@ -137,6 +142,7 @@ namespace {
     std::vector<int> gedReco_iGen;
     std::vector<EZBranch<reco::Photon>> gedReco_misc;
     std::vector<ValueMapBranch<reco::Photon>> gedReco_valuemaps;
+    std::vector<float> gedReco_conversionSafeElectronVeto;
     std::vector<float> gedReco_TPmetric;
     std::vector<int> gedReco_TPid;
     std::vector<float> gedReco_TPpt;
@@ -167,6 +173,10 @@ class Phase2PhotonTupler : public edm::one::EDAnalyzer<edm::one::SharedResources
     edm::EDGetTokenT<std::vector<SimTrack>> simTracksToken_;
     edm::EDGetTokenT<std::vector<SimVertex>> simVerticesToken_;
     edm::EDGetTokenT<double> rhoToken_;
+    edm::EDGetTokenT<reco::GsfElectronCollection> ecalDrivenElectronsToken_;
+    edm::EDGetTokenT<reco::GsfElectronCollection> gedGsfElectronsToken_;
+    edm::EDGetTokenT<reco::ConversionCollection> conversionsToken_;
+    edm::EDGetTokenT<reco::BeamSpot> beamspotToken_;
 
     bool doPremixContent_;
     edm::EDGetTokenT<TrackingParticleCollection> trackingParticlesToken_;
@@ -176,6 +186,8 @@ class Phase2PhotonTupler : public edm::one::EDAnalyzer<edm::one::SharedResources
     TTree * photonTree_;
     EventStruct event_;
 
+    StringCutObjectSelector<reco::Photon, false> localRecoCut_;
+    StringCutObjectSelector<reco::Photon, false> gedRecoCut_;
     StringCutObjectSelector<reco::GenParticle, false> genCut_;
 };
 
@@ -188,10 +200,16 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   simTracksToken_(consumes<std::vector<SimTrack>>(iConfig.getParameter<edm::InputTag>("simTracksSrc"))),
   simVerticesToken_(consumes<std::vector<SimVertex>>(iConfig.getParameter<edm::InputTag>("simVerticesSrc"))),
   rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoSrc"))),
+  ecalDrivenElectronsToken_(consumes<reco::GsfElectronCollection>(iConfig.getParameter<edm::InputTag>("ecalDrivenElectrons"))),
+  gedGsfElectronsToken_(consumes<reco::GsfElectronCollection>(iConfig.getParameter<edm::InputTag>("gedGsfElectrons"))),
+  conversionsToken_(consumes<reco::ConversionCollection>(iConfig.getParameter<edm::InputTag>("conversions"))),
+  beamspotToken_(consumes<reco::BeamSpot>(iConfig.getParameter<edm::InputTag>("beamspot"))),
   doPremixContent_(iConfig.getParameter<bool>("doPremixContent")),
   trackingParticlesToken_(consumes<TrackingParticleCollection>(iConfig.getParameter<edm::InputTag>("trackingParticles"))),
   trackingVerticesToken_(consumes<TrackingVertexCollection>(iConfig.getParameter<edm::InputTag>("trackingVertices"))),
   caloHitsToken_(consumes<edm::PCaloHitContainer>(iConfig.getParameter<edm::InputTag>("caloHits"))),
+  localRecoCut_(iConfig.getParameter<std::string>("localRecoCut")),
+  gedRecoCut_(iConfig.getParameter<std::string>("gedRecoCut")),
   genCut_(iConfig.getParameter<std::string>("genCut"))
 {
   usesResource("TFileService");
@@ -230,6 +248,8 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
       event_.localReco_valuemaps.emplace_back(photonTree_, "localReco_"+name, consumes<edm::ValueMap<float>>(localRecoMisc.getParameter<edm::InputTag>(name)));
     }
   }
+  photonTree_->Branch("localReco_matchedGsfChi2", &event_.localReco_matchedGsfChi2);
+  photonTree_->Branch("localReco_matchedGsfLostHits", &event_.localReco_matchedGsfLostHits);
 
   photonTree_->Branch("gedReco_pt", &event_.gedReco_pt);
   photonTree_->Branch("gedReco_eta", &event_.gedReco_eta);
@@ -244,13 +264,15 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
       event_.gedReco_valuemaps.emplace_back(photonTree_, "gedReco_"+name, consumes<edm::ValueMap<float>>(gedRecoMisc.getParameter<edm::InputTag>(name)));
     }
   }
-  photonTree_->Branch("gedReco_TPmetric", &event_.gedReco_TPmetric);
-  photonTree_->Branch("gedReco_TPid", &event_.gedReco_TPid);
-  photonTree_->Branch("gedReco_TPpt", &event_.gedReco_TPpt);
-  photonTree_->Branch("gedReco_TPeta", &event_.gedReco_TPeta);
-  photonTree_->Branch("gedReco_TPphi", &event_.gedReco_TPphi);
-  photonTree_->Branch("gedReco_TPevent", &event_.gedReco_TPevent);
-
+  photonTree_->Branch("gedReco_conversionSafeElectronVeto", &event_.gedReco_conversionSafeElectronVeto);
+  if ( doPremixContent_ ) {
+    photonTree_->Branch("gedReco_TPmetric", &event_.gedReco_TPmetric);
+    photonTree_->Branch("gedReco_TPid", &event_.gedReco_TPid);
+    photonTree_->Branch("gedReco_TPpt", &event_.gedReco_TPpt);
+    photonTree_->Branch("gedReco_TPeta", &event_.gedReco_TPeta);
+    photonTree_->Branch("gedReco_TPphi", &event_.gedReco_TPphi);
+    photonTree_->Branch("gedReco_TPevent", &event_.gedReco_TPevent);
+  }
 }
 
 
@@ -282,6 +304,18 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   Handle<double> rhoH;
   iEvent.getByToken(rhoToken_, rhoH);
 
+  Handle<reco::GsfElectronCollection> ecalDrivenElectronsH;
+  iEvent.getByToken(ecalDrivenElectronsToken_, ecalDrivenElectronsH);
+
+  Handle<reco::GsfElectronCollection> gedGsfElectronsH;
+  iEvent.getByToken(gedGsfElectronsToken_, gedGsfElectronsH);
+
+  Handle<reco::ConversionCollection> conversionsH;
+  iEvent.getByToken(conversionsToken_, conversionsH);
+
+  Handle<reco::BeamSpot> beamspotH;
+  iEvent.getByToken(beamspotToken_, beamspotH);
+
   Handle<TrackingParticleCollection> trackingParticlesH;
   Handle<TrackingVertexCollection> trackingVerticesH;
   Handle<PCaloHitContainer> caloHitsH;
@@ -310,14 +344,33 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.localReco_phi.clear();
   for(auto&& b : event_.localReco_misc) b.clear();
   for(auto&& b : event_.localReco_valuemaps) b.clearAndSet(iEvent, photonsH);
+  event_.localReco_matchedGsfChi2.clear();
+  event_.localReco_matchedGsfLostHits.clear();
   for(size_t iPho=0; iPho<photonsH->size(); ++iPho) {
     const auto& pho = photonsH->at(iPho);
+    if ( not localRecoCut_(pho) ) continue;
 
     event_.localReco_pt.push_back(pho.pt());
     event_.localReco_eta.push_back(pho.eta());
     event_.localReco_phi.push_back(pho.phi());
     for(auto&& b : event_.localReco_misc) b.push_back(pho);
     for(auto&& b : event_.localReco_valuemaps) b.push_back(iPho);
+   
+    int nel = 0;
+    for(const auto& el : *ecalDrivenElectronsH) {
+      if ( reco::deltaR(*el.superCluster(), *pho.superCluster()) > 0.01 ) continue;
+      nel++;
+      if ( nel == 1 ) {
+        event_.localReco_matchedGsfChi2.push_back( el.gsfTrack()->chi2() );
+        event_.localReco_matchedGsfLostHits.push_back( el.gsfTrack()->hitPattern().numberOfLostHits(reco::HitPattern::MISSING_INNER_HITS) );
+      } else {
+        std::cout << "We can find more than one electron from the same SC I guess?" << std::endl;
+      }
+    }
+    if ( nel == 0 ) {
+      event_.localReco_matchedGsfChi2.push_back( 1.e5 );
+      event_.localReco_matchedGsfLostHits.push_back( -1. );
+    }
   }
 
   event_.gedReco_pt.clear();
@@ -325,20 +378,26 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.gedReco_phi.clear();
   for(auto&& b : event_.gedReco_misc) b.clear();
   for(auto&& b : event_.gedReco_valuemaps) b.clearAndSet(iEvent, photonsH);
-  event_.gedReco_TPmetric.clear();
-  event_.gedReco_TPid.clear();
-  event_.gedReco_TPpt.clear();
-  event_.gedReco_TPeta.clear();
-  event_.gedReco_TPphi.clear();
-  event_.gedReco_TPevent.clear();
+  event_.gedReco_conversionSafeElectronVeto.clear();
+  if ( doPremixContent_ ) {
+    event_.gedReco_TPmetric.clear();
+    event_.gedReco_TPid.clear();
+    event_.gedReco_TPpt.clear();
+    event_.gedReco_TPeta.clear();
+    event_.gedReco_TPphi.clear();
+    event_.gedReco_TPevent.clear();
+  }
   for(size_t iPho=0; iPho<gedPhotonsH->size(); ++iPho) {
     const auto& pho = gedPhotonsH->at(iPho);
+    if ( not gedRecoCut_(pho) ) continue;
 
     event_.gedReco_pt.push_back(pho.pt());
     event_.gedReco_eta.push_back(pho.eta());
     event_.gedReco_phi.push_back(pho.phi());
     for(auto&& b : event_.gedReco_misc) b.push_back(pho);
     for(auto&& b : event_.gedReco_valuemaps) b.push_back(iPho);
+
+    event_.gedReco_conversionSafeElectronVeto.push_back( !ConversionTools::hasMatchedPromptElectron(pho.superCluster(), gedGsfElectronsH, conversionsH, beamspotH->position()) );
 
     if ( doPremixContent_ ) {
       std::cout << "New photon pt=" << pho.pt() << ", all calohits:" << std::endl;

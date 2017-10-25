@@ -8,6 +8,8 @@ options.parseArguments()
 
 process.options = cms.untracked.PSet(
     wantSummary = cms.untracked.bool(True),
+    numberOfThreads = cms.untracked.uint32(4),
+    numberOfStreams = cms.untracked.uint32(0),
 )
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
@@ -25,6 +27,8 @@ process.HGCalPhotonIDValueMap.photons = phoSrc
 
 process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     photons = phoSrc,
+    localRecoCut = cms.string("pt>10 && !isEB"),
+    gedRecoCut = cms.string("pt>10"),
     gedPhotons = cms.InputTag("gedPhotons"),
     genParticles = cms.InputTag("genParticles"),
     genCut = cms.string("pt>5 && status==1 && (abs(pdgId)==11 || pdgId==22)"),
@@ -33,35 +37,49 @@ process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     simTracksSrc = cms.InputTag("g4SimHits"),
     simVerticesSrc = cms.InputTag("g4SimHits"),
     rhoSrc = cms.InputTag("fixedGridRhoFastjetAll"),
+    ecalDrivenElectrons = cms.InputTag("ecalDrivenGsfElectrons"),
+    gedGsfElectrons = cms.InputTag("gedGsfElectrons"),
+    conversions = cms.InputTag("conversions"),
+    beamspot = cms.InputTag("offlineBeamSpot"),
     doPremixContent = cms.bool(False),
     trackingParticles = cms.InputTag("mix:MergedTrackTruth"),
     trackingVertices = cms.InputTag("mix:MergedTrackTruth"),
     caloHits = cms.InputTag("g4SimHits:EcalHitsEB"),
 )
 
-process.ntupler.gedRecoMisc = cms.PSet(
+common = cms.PSet(
     scEta = cms.string("superCluster().eta()"),
-    trkSumPtSolidConeDR04 = cms.string("trkSumPtSolidConeDR04()"),
-    nTrkSolidConeDR04 = cms.string("nTrkSolidConeDR04()"),
+    scRawEnergy = cms.string("superCluster().rawEnergy()"),
+    hasPixelSeed = cms.string("hasPixelSeed()"),
+)
+
+process.ntupler.gedRecoMisc = cms.PSet(
+    common,
     full5x5_sigmaIetaIeta = cms.string("full5x5_sigmaIetaIeta()"),
     full5x5_sigmaIetaIphi = cms.string("full5x5_showerShapeVariables().sigmaIetaIphi"),
     full5x5_sigmaIphiIphi = cms.string("full5x5_showerShapeVariables().sigmaIphiIphi"),
     full5x5_maxEnergyXtal = cms.string("full5x5_maxEnergyXtal()"),
+    etaWidth = cms.string("superCluster().etaWidth()"),
+    phiWidth = cms.string("superCluster().phiWidth()"),
+    r9 = cms.string("r9()"),
+    s4 = cms.string("showerShapeVariables().e2x2/showerShapeVariables().e5x5"),
+    full5x5_r9 = cms.string("full5x5_r9()"),
+    full5x5_s4 = cms.string("full5x5_showerShapeVariables().e2x2/full5x5_showerShapeVariables().e5x5"),
     hadronicOverEm = cms.string("hadronicOverEm()"),
     hadronicDepth1OverEm = cms.string("hadronicDepth1OverEm()"),
     hadronicDepth2OverEm = cms.string("hadronicDepth2OverEm()"),
     hadTowOverEm = cms.string("hadTowOverEm()"),
     hadTowDepth1OverEm = cms.string("hadTowDepth1OverEm()"),
     hadTowDepth2OverEm = cms.string("hadTowDepth2OverEm()"),
-    hasPixelSeed = cms.string("hasPixelSeed()"),
     chargedHadronIso = cms.string("chargedHadronIso()"),
     neutralHadronIso = cms.string("neutralHadronIso()"),
     photonIso = cms.string("photonIso()"),
-    sumPUPt = cms.string("sumPUPt()"),
+    trkSumPtSolidConeDR04 = cms.string("trkSumPtSolidConeDR04()"),
+    nTrkSolidConeDR04 = cms.string("nTrkSolidConeDR04()"),
 )
 
 process.ntupler.localRecoMisc = cms.PSet(
-    process.ntupler.gedRecoMisc,
+    common,
     seed_det = cms.string("superCluster().seed().hitsAndFractions().at(0).first.det()"),
     seed_subdet = cms.string("superCluster().seed().hitsAndFractions().at(0).first.subdetId()"),
 )
