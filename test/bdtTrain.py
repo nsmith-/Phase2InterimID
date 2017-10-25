@@ -1,13 +1,15 @@
 import ROOT
 import sys
-from bdtCommon import BarrelIDConfig, EndcapIDConfig
+import bdtCommon
 
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-idConfig = EndcapIDConfig
-if sys.argv[-1] == 'b':
-    idConfig = BarrelIDConfig
+idConfig = filter(lambda x: x.name==sys.argv[-1], bdtCommon.idconfigs)
+if len(idConfig)==1:
+    idConfig = idConfig[0]
+else:
+    raise Exception("Check idconfigs in bdtCommon.py")
 
 truecut = "isTrue"
 bkgcut = "!isTrue"
@@ -28,13 +30,13 @@ d.SetWeightExpression("weight")
 
 #w.BookMethod(d, ROOT.TMVA.Types.kFisher, "Fisher", "H:!V")
 #w.BookMethod(d, ROOT.TMVA.Types.kCuts, "Cuts", "FitMethod=SA")
-w.BookMethod(d, ROOT.TMVA.Types.kBDT, "BDT", "NTrees=800:MaxDepth=3:nCuts=100")
+w.BookMethod(d, ROOT.TMVA.Types.kBDT, "BDT", idConfig.bdtSettings)
 w.TrainAllMethods()
 w.TestAllMethods()
 w.EvaluateAllMethods()
 
 fOut.Close()
 ROOT.TMVA.mvas("default", "%sout.root" % idConfig.name, ROOT.TMVA.kCompareType)
-ROOT.gPad.Print("bdt_overtrain.pdf")
+ROOT.gPad.Print("bdt_overtrain_%s.pdf" % idConfig.name)
 
 #g = ROOT.TMVA.TMVAGui("tmvaout.root")
