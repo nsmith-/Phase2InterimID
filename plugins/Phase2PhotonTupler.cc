@@ -168,15 +168,17 @@ class Phase2PhotonTupler : public edm::one::EDAnalyzer<edm::one::SharedResources
     edm::EDGetTokenT<reco::PhotonCollection> photonsToken_;
     edm::EDGetTokenT<reco::PhotonCollection> gedPhotonsToken_;
     edm::EDGetTokenT<reco::GenParticleCollection> genParticlesToken_;
-    edm::EDGetTokenT<SimClusterCollection> simClustersToken_;
-    edm::EDGetTokenT<CaloParticleCollection> caloParticlesToken_;
-    edm::EDGetTokenT<std::vector<SimTrack>> simTracksToken_;
-    edm::EDGetTokenT<std::vector<SimVertex>> simVerticesToken_;
     edm::EDGetTokenT<double> rhoToken_;
     edm::EDGetTokenT<reco::GsfElectronCollection> ecalDrivenElectronsToken_;
     edm::EDGetTokenT<reco::GsfElectronCollection> gedGsfElectronsToken_;
     edm::EDGetTokenT<reco::ConversionCollection> conversionsToken_;
     edm::EDGetTokenT<reco::BeamSpot> beamspotToken_;
+
+    bool doRecoContent_;
+    edm::EDGetTokenT<SimClusterCollection> simClustersToken_;
+    edm::EDGetTokenT<CaloParticleCollection> caloParticlesToken_;
+    edm::EDGetTokenT<std::vector<SimTrack>> simTracksToken_;
+    edm::EDGetTokenT<std::vector<SimVertex>> simVerticesToken_;
 
     bool doPremixContent_;
     edm::EDGetTokenT<TrackingParticleCollection> trackingParticlesToken_;
@@ -195,15 +197,16 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonsToken_(consumes<reco::PhotonCollection>(iConfig.getParameter<edm::InputTag>("photons"))),
   gedPhotonsToken_(consumes<reco::PhotonCollection>(iConfig.getParameter<edm::InputTag>("gedPhotons"))),
   genParticlesToken_(consumes<reco::GenParticleCollection>(iConfig.getParameter<edm::InputTag>("genParticles"))),
-  simClustersToken_(consumes<SimClusterCollection>(iConfig.getParameter<edm::InputTag>("simClusters"))),
-  caloParticlesToken_(consumes<CaloParticleCollection>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
-  simTracksToken_(consumes<std::vector<SimTrack>>(iConfig.getParameter<edm::InputTag>("simTracksSrc"))),
-  simVerticesToken_(consumes<std::vector<SimVertex>>(iConfig.getParameter<edm::InputTag>("simVerticesSrc"))),
   rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoSrc"))),
   ecalDrivenElectronsToken_(consumes<reco::GsfElectronCollection>(iConfig.getParameter<edm::InputTag>("ecalDrivenElectrons"))),
   gedGsfElectronsToken_(consumes<reco::GsfElectronCollection>(iConfig.getParameter<edm::InputTag>("gedGsfElectrons"))),
   conversionsToken_(consumes<reco::ConversionCollection>(iConfig.getParameter<edm::InputTag>("conversions"))),
   beamspotToken_(consumes<reco::BeamSpot>(iConfig.getParameter<edm::InputTag>("beamspot"))),
+  doRecoContent_(iConfig.getParameter<bool>("doRecoContent")),
+  simClustersToken_(consumes<SimClusterCollection>(iConfig.getParameter<edm::InputTag>("simClusters"))),
+  caloParticlesToken_(consumes<CaloParticleCollection>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
+  simTracksToken_(consumes<std::vector<SimTrack>>(iConfig.getParameter<edm::InputTag>("simTracksSrc"))),
+  simVerticesToken_(consumes<std::vector<SimVertex>>(iConfig.getParameter<edm::InputTag>("simVerticesSrc"))),
   doPremixContent_(iConfig.getParameter<bool>("doPremixContent")),
   trackingParticlesToken_(consumes<TrackingParticleCollection>(iConfig.getParameter<edm::InputTag>("trackingParticles"))),
   trackingVerticesToken_(consumes<TrackingVertexCollection>(iConfig.getParameter<edm::InputTag>("trackingVertices"))),
@@ -295,12 +298,6 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   Handle<reco::GenParticleCollection> genParticlesH;
   iEvent.getByToken(genParticlesToken_, genParticlesH);
 
-  Handle<SimClusterCollection> simClustersH;
-  iEvent.getByToken(simClustersToken_, simClustersH);
-
-  Handle<CaloParticleCollection> caloParticlesH;
-  iEvent.getByToken(caloParticlesToken_, caloParticlesH);
-
   Handle<double> rhoH;
   iEvent.getByToken(rhoToken_, rhoH);
 
@@ -316,6 +313,20 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   Handle<reco::BeamSpot> beamspotH;
   iEvent.getByToken(beamspotToken_, beamspotH);
 
+  Handle<SimClusterCollection> simClustersH;
+  Handle<CaloParticleCollection> caloParticlesH;
+  Handle<std::vector<SimTrack>> simTracks;
+  Handle<std::vector<SimVertex>> simVertices;
+  std::vector<PhotonMCTruth> mcPhotons;
+  if ( doRecoContent_ ) {
+    iEvent.getByToken(simClustersToken_, simClustersH);
+    iEvent.getByToken(caloParticlesToken_, caloParticlesH);
+    iEvent.getByToken(simTracksToken_ ,simTracks);
+    iEvent.getByToken(simVerticesToken_ ,simVertices);
+    std::unique_ptr<PhotonMCTruthFinder> thePhotonMCTruthFinder_(new PhotonMCTruthFinder());
+    mcPhotons = thePhotonMCTruthFinder_->find(*simTracks,  *simVertices);
+  }
+
   Handle<TrackingParticleCollection> trackingParticlesH;
   Handle<TrackingVertexCollection> trackingVerticesH;
   Handle<PCaloHitContainer> caloHitsH;
@@ -325,13 +336,6 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     iEvent.getByToken(caloHitsToken_, caloHitsH);
   }
 
-  Handle<std::vector<SimTrack>> simTracks;
-  iEvent.getByToken(simTracksToken_ ,simTracks);
-  Handle<std::vector<SimVertex>> simVertices;
-  iEvent.getByToken(simVerticesToken_ ,simVertices);
-  std::unique_ptr<PhotonMCTruthFinder> thePhotonMCTruthFinder_(new PhotonMCTruthFinder());
-  std::vector<PhotonMCTruth> mcPhotons;
-  mcPhotons = thePhotonMCTruthFinder_->find(*simTracks,  *simVertices);
 
   event_.run = iEvent.run();
   event_.lumi = iEvent.luminosityBlock();
@@ -501,19 +505,21 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
     float conversionRho = -1.;
     float conversionZ = 0.;
-    for(auto& pmc : mcPhotons) {
-      // auto simTrack = std::find_if(simTracks->begin(), simTracks->end(), [pmc](const SimTrack& t) { return t.trackId() == (size_t) pmc.trackId(); });
-      // size_t iGenPart = simTrack->genpartIndex();
-      // (but this is genParticles not prunedGenParticles)
-      // This is easier than the more correct alternative, first one is always initial G4 track
-      if ( reco::deltaR(pmc.fourMomentum(), gp.p4()) < 0.001 ) {
-        // PhotonMCTruth::vertex() is the conversion vertex (not mother vertex)
-        // So the first one will always have isAConversion() true, but where it
-        // interacted tells us if it matters, since all photons will at least interact
-        // by the time they hit ECAL
-        conversionRho = pmc.vertex().perp();
-        conversionZ = pmc.vertex().z();
-        break;
+    if ( doRecoContent_ ) {
+      for(auto& pmc : mcPhotons) {
+        // auto simTrack = std::find_if(simTracks->begin(), simTracks->end(), [pmc](const SimTrack& t) { return t.trackId() == (size_t) pmc.trackId(); });
+        // size_t iGenPart = simTrack->genpartIndex();
+        // (but this is genParticles not prunedGenParticles)
+        // This is easier than the more correct alternative, first one is always initial G4 track
+        if ( reco::deltaR(pmc.fourMomentum(), gp.p4()) < 0.001 ) {
+          // PhotonMCTruth::vertex() is the conversion vertex (not mother vertex)
+          // So the first one will always have isAConversion() true, but where it
+          // interacted tells us if it matters, since all photons will at least interact
+          // by the time they hit ECAL
+          conversionRho = pmc.vertex().perp();
+          conversionZ = pmc.vertex().z();
+          break;
+        }
       }
     }
     event_.gen_conversionRho.push_back(conversionRho);

@@ -4,43 +4,52 @@ from Configuration.StandardSequences.Eras import eras
 
 process = cms.Process("Ntupler", eras.Phase2)
 options = VarParsing('analysis')
+options.register(
+    "phase2",
+    True,
+    VarParsing.multiplicity.singleton,
+    VarParsing.varType.bool,
+    "phase 2 sample"
+)
 options.parseArguments()
 
 process.options = cms.untracked.PSet(
     wantSummary = cms.untracked.bool(True),
-    numberOfThreads = cms.untracked.uint32(4),
+    numberOfThreads = cms.untracked.uint32(4 if options.phase2 else 1),
     numberOfStreams = cms.untracked.uint32(0),
 )
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
-process.load('Configuration.Geometry.GeometryExtended2023D17Reco_cff')
+if options.phase2:
+    process.load('Configuration.Geometry.GeometryExtended2023D17Reco_cff')
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(options.maxEvents) )
 process.source = cms.Source ("PoolSource", fileNames = cms.untracked.vstring(options.inputFiles) )
 
-# phoSrc = cms.InputTag("photons")
-phoSrc = cms.InputTag("photonsFromMultiCl")
-
-process.load("EgammaTools.EgammaAnalysis.HGCalPhotonIDValueMap_cfi")
-process.HGCalPhotonIDValueMap.photons = phoSrc
+phoSrc = cms.InputTag("gedPhotons")
+if options.phase2:
+    phoSrc = cms.InputTag("photonsFromMultiCl")
+    process.load("EgammaTools.EgammaAnalysis.HGCalPhotonIDValueMap_cfi")
+    process.HGCalPhotonIDValueMap.photons = phoSrc
 
 process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     photons = phoSrc,
     localRecoCut = cms.string("pt>10 && !isEB"),
-    gedRecoCut = cms.string("pt>10"),
+    gedRecoCut = cms.string("pt>10 && isEB"),
     gedPhotons = cms.InputTag("gedPhotons"),
     genParticles = cms.InputTag("genParticles"),
     genCut = cms.string("pt>5 && status==1 && (abs(pdgId)==11 || pdgId==22)"),
+    rhoSrc = cms.InputTag("fixedGridRhoFastjetAll"),
+    ecalDrivenElectrons = cms.InputTag("ecalDrivenGsfElectrons" if options.phase2 else "gedGsfElectrons"),
+    gedGsfElectrons = cms.InputTag("gedGsfElectrons"),
+    conversions = cms.InputTag("conversions"),
+    beamspot = cms.InputTag("offlineBeamSpot"),
+    doRecoContent = cms.bool(options.phase2),
     simClusters = cms.InputTag("mix:MergedCaloTruth"),
     caloParticles = cms.InputTag("mix:MergedCaloTruth"),
     simTracksSrc = cms.InputTag("g4SimHits"),
     simVerticesSrc = cms.InputTag("g4SimHits"),
-    rhoSrc = cms.InputTag("fixedGridRhoFastjetAll"),
-    ecalDrivenElectrons = cms.InputTag("ecalDrivenGsfElectrons"),
-    gedGsfElectrons = cms.InputTag("gedGsfElectrons"),
-    conversions = cms.InputTag("conversions"),
-    beamspot = cms.InputTag("offlineBeamSpot"),
     doPremixContent = cms.bool(False),
     trackingParticles = cms.InputTag("mix:MergedTrackTruth"),
     trackingVertices = cms.InputTag("mix:MergedTrackTruth"),
@@ -78,20 +87,26 @@ process.ntupler.gedRecoMisc = cms.PSet(
     nTrkSolidConeDR04 = cms.string("nTrkSolidConeDR04()"),
 )
 
-process.ntupler.localRecoMisc = cms.PSet(
-    common,
-    seed_det = cms.string("superCluster().seed().hitsAndFractions().at(0).first.det()"),
-    seed_subdet = cms.string("superCluster().seed().hitsAndFractions().at(0).first.subdetId()"),
-)
-for key in process.HGCalPhotonIDValueMap.variables:
-    setattr(process.ntupler.localRecoMisc, key, cms.InputTag("HGCalPhotonIDValueMap", key))
+if options.phase2:
+    process.ntupler.localRecoMisc = cms.PSet(
+        common,
+        seed_det = cms.string("superCluster().seed().hitsAndFractions().at(0).first.det()"),
+        seed_subdet = cms.string("superCluster().seed().hitsAndFractions().at(0).first.subdetId()"),
+    )
+    for key in process.HGCalPhotonIDValueMap.variables:
+        setattr(process.ntupler.localRecoMisc, key, cms.InputTag("HGCalPhotonIDValueMap", key))
+else:
+    process.ntupler.localRecoMisc = cms.PSet(process.ntupler.gedRecoMisc)
 
 process.TFileService = cms.Service("TFileService",
     fileName = cms.string(options.outputFile)
 )
 
-process.p = cms.Path(
-    process.HGCalPhotonIDValueMap  +
-    process.ntupler
-)
+if options.phase2:
+    process.p = cms.Path(
+        process.HGCalPhotonIDValueMap  +
+        process.ntupler
+    )
+else:
+    process.p = cms.Path( process.ntupler )
 
