@@ -13,13 +13,7 @@ if len(idConfig)==1:
 else:
     raise Exception("Check idconfigs in bdtCommon.py")
 
-filenames = [
-    "/data/ncsmith/932phoID_round2/GJets.root",
-    "/data/ncsmith/932phoID_round2/DiPhotonSherpa.root",
-    "/data/ncsmith/932phoID_round2/QCD_1.root",
-    "/data/ncsmith/932phoID_round2/DY2J.root",
-]
-
+filenames = idConfig.inputFiles
 
 print "Checking files"
 files = map(ROOT.TFile.Open, filenames)
@@ -28,7 +22,7 @@ if not all(var.checkTree(tree) for tree in trees for var in idConfig.varmap):
     exit()
 
 
-print "Making reweight hist"
+print "Making reweight numerator hist"
 ROOT.gROOT.cd()
 hreweight_tmp = idConfig.hreweight_def.Clone("hreweight_tmp")
 for tree in trees:
@@ -36,17 +30,24 @@ for tree in trees:
     tree.Draw("%s:%s>>+hreweight_tmp" % (idConfig.reweightvar2.formula, idConfig.reweightvar1.formula), idConfig.trueCut, "goff")
 ROOT.gROOT.cd()
 nEntries = hreweight_tmp.GetEntries()
-hreweight = hreweight_tmp.Clone("hreweight")
-hreweight_tmp.Reset()
-for tree in trees:
+hreweight_num = hreweight_tmp.Clone("hreweight_num")
+print "Total signal events:", nEntries
+reweight_denoms = []
+for i, tree in enumerate(trees):
+    print "Making reweight denominator for input tree", filenames[i]
+    hreweight = hreweight_num.Clone("hreweight_fin%d" % i)
+    hreweight_tmp.Reset()
     ROOT.gROOT.cd()
-    tree.Draw("%s:%s>>+hreweight_tmp" % (idConfig.reweightvar2.formula, idConfig.reweightvar1.formula), idConfig.bkgCut, "goff")
-nEntries += hreweight_tmp.GetEntries()
-hreweight.Divide(hreweight_tmp)
+    tree.Draw("%s:%s>>hreweight_tmp" % (idConfig.reweightvar2.formula, idConfig.reweightvar1.formula), idConfig.bkgCut, "goff")
+    print "File %s has %d bkg events" % (filenames[i], hreweight_tmp.GetEntries())
+    nEntries += hreweight_tmp.GetEntries()
+    hreweight.Divide(hreweight_tmp)
+    if 'DY' in filenames[i]:
+        hreweight.Scale(0.1)
+    reweight_denoms.append(hreweight)
 
 print "Setting up output tree"
 fout = ROOT.TFile("%sin.root" % idConfig.name, "recreate")
-hreweight.Write()
 tout = ROOT.TTree("tree", "flat like a pancake")
 for var in idConfig.varmap:
     if var is idConfig.trainvar:
@@ -56,7 +57,11 @@ weight = array.array('f', [0.])
 tout.Branch("weight", weight, "weight/f")
 
 print "Filling, expect %d entries" % nEntries
-for tree in trees:
+for i, tree in enumerate(trees):
+    hreweight = reweight_denoms[i]
+    fout.cd()
+    hreweight.Write()
+
     fm = ROOT.TTreeFormulaManager()
     for var in idConfig.varmap:
         var.setTree(tree, fm)

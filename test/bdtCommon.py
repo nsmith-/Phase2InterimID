@@ -30,36 +30,30 @@ class Variable:
 
 
 class IDConfig:
-    def __init__(self, name, morevars, bdtSettings=""):
+    def __init__(self, name, morevars, bdtSettings, inputFiles):
         self.name = name
         self.varmap = self._def_varmap + morevars
         self.bdtSettings = bdtSettings
+        self.inputFiles = inputFiles
 
     def makeReader(self):
         if not hasattr(self, "_reader"):
             self._reader = ROOT.TMVA.Reader("!Color:Silent")
-            #self._reader.SetName(self.name+"Reader")
-            # https://root.cern.ch/doc/v606/Reader_8h_source.html#l00126 (wtf?)
-            iReader = ROOT.gROOT.GetListOfSpecials().GetSize()
-            ROOT.gROOT.GetListOfSpecials().Add(self._reader)
             params = [v for v in self.varmap if v.train]
             for i, var in enumerate(params):
                 self._reader.AddVariable(var.name, var._mem)
             self._reader.BookMVA(self.name, "default/weights/%s_BDT.weights.xml" % self.name)
-            fcnArgs = ", ".join(("const double var%d" % i) for i in range(len(params)))
-            fcnBodyVars = " ".join("in[{0}]=var{0};".format(i) for i in range(len(params)))
-            evalFcn = 'double eval%s(%s){auto ptr = (TMVA::Reader*) gROOT->GetListOfSpecials()->At(%d); std::vector<double> in(%d); %s return ptr->EvaluateMVA(in, "%s", 0.);}' % (self.name, fcnArgs, iReader, len(params), fcnBodyVars, self.name)
-            ROOT.gInterpreter.Declare(evalFcn)
-            self.evalFcn = 'eval%s(%s)' % (self.name, ", ".join(p.formula for p in params))
-            self.mvaVariable = Variable(self.name, self.evalFcn)
         return self._reader
+
+    def evalReader(self):
+        return self._reader.EvaluateMVA(self.name)
 
     def friendTreeFile(self, filename):
         return "%s_%s.root" % (filename.replace(".root", ""), self.name)
 
 
 class BarrelIDConfig(IDConfig):
-    trainingCut = "gedReco_pt>25 && abs(gedReco_eta)<1.4"
+    trainingCut = "gedReco_pt>25 && abs(gedReco_eta)<1.4"  # " && (gedReco_iGen<0||abs(gen_parentId[gedReco_iGen])!=11)"
     trueDef = "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_isPromptFinalState[gedReco_iGen]"
     trueCut = trainingCut + " && (%s)" % trueDef
     bkgCut = trainingCut + " && !(%s)" % trueDef
@@ -88,65 +82,221 @@ class EndcapIDConfig(IDConfig):
     hreweight_def = ROOT.TH2D("hreweight_def_endcap", "Bkg to signal reweight;Photon p_{T} (GeV);Photon |#eta|", 25, 25, 150, 5, 1.5, 3.)
 
 
+allInputFiles = [
+    "/data/ncsmith/932phoID_round2/GJets.root",
+    "/data/ncsmith/932phoID_round2/DiPhotonSherpa.root",
+    "/data/ncsmith/932phoID_round2/QCD_1.root",
+    "/data/ncsmith/932phoID_round2/DY2J.root",
+]
+
 idconfigs = [
-    BarrelIDConfig("barrel1", [
-        Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
-        Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
-        Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
-        Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
-        Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
-        Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
-        Variable("photonIso", "gedReco_photonIso"),
-        Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
-    ], "NTrees=800:MaxDepth=3:nCuts=100"),
-    EndcapIDConfig("endcap1", [
-        Variable("sigmaUU", "localReco_sigmaUU"),
-        Variable("sigmaVV", "localReco_sigmaVV"),
-        Variable("e4oEtot", "localReco_e4oEtot"),
-        Variable("layerEfrac10", "localReco_layerEfrac10"),
-        Variable("layerEfrac90", "localReco_layerEfrac90"),
-        Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
-        Variable("depthCompatibility", "localReco_depthCompatibility"),
-        Variable("isoRing0", "localReco_caloIsoRing0"),
-        Variable("isoRing1", "localReco_caloIsoRing1"),
-        Variable("isoRing2", "localReco_caloIsoRing2"),
-        Variable("isoRing3", "localReco_caloIsoRing3"),
-        Variable("isoRing4", "localReco_caloIsoRing4"),
-    ], "NTrees=800:MaxDepth=3:nCuts=100"),
-    BarrelIDConfig("barrel2", [
-        Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
-        Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
-        Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
-        Variable("etaWidth", "gedReco_etaWidth"),
-        Variable("phiWidth", "gedReco_phiWidth"),
-        Variable("full5x5_r9", "gedReco_full5x5_r9"),
-        Variable("full5x5_s4", "gedReco_full5x5_s4"),
-        Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
-        Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
-        Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
-        Variable("photonIso", "gedReco_photonIso"),
-        Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
-        Variable("scRawEnergy", "gedReco_scRawEnergy"),
-        Variable("trkSumPt", "gedReco_trkSumPtSolidConeDR04"),
-        Variable("eVeto", "gedReco_conversionSafeElectronVeto"),
-        Variable("rho", "rho"),
-    ], "NTrees=2000:MaxDepth=3:nCuts=100"),
-    EndcapIDConfig("endcap2", [
-        Variable("sigmaUU", "localReco_sigmaUU"),
-        Variable("sigmaVV", "localReco_sigmaVV"),
-        Variable("e4oEtot", "localReco_e4oEtot"),
-        Variable("layerEfrac10", "localReco_layerEfrac10"),
-        Variable("layerEfrac90", "localReco_layerEfrac90"),
-        Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
-        Variable("depthCompatibility", "localReco_depthCompatibility"),
-        Variable("isoRing0", "localReco_caloIsoRing0"),
-        Variable("isoRing1", "localReco_caloIsoRing1"),
-        Variable("isoRing2", "localReco_caloIsoRing2"),
-        Variable("isoRing3", "localReco_caloIsoRing3"),
-        Variable("isoRing4", "localReco_caloIsoRing4"),
-        Variable("scEnergy", "localReco_scEnergy"),
-        Variable("matchedTrackChi2", "localReco_matchedGsfChi2"),
-        Variable("matchedTrackLostHits", "localReco_matchedGsfLostHits"),
-        Variable("rho", "rho"),
-    ], "NTrees=2000:MaxDepth=3:nCuts=100"),
+    BarrelIDConfig(
+        "barrel1",
+        [
+            Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
+            Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
+            Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
+            Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
+            Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
+            Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
+            Variable("photonIso", "gedReco_photonIso"),
+            Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
+        ],
+        "NTrees=800:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
+    EndcapIDConfig("endcap1",
+        [
+            Variable("sigmaUU", "localReco_sigmaUU"),
+            Variable("sigmaVV", "localReco_sigmaVV"),
+            Variable("e4oEtot", "localReco_e4oEtot"),
+            Variable("layerEfrac10", "localReco_layerEfrac10"),
+            Variable("layerEfrac90", "localReco_layerEfrac90"),
+            Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
+            Variable("depthCompatibility", "localReco_depthCompatibility"),
+            Variable("isoRing0", "localReco_caloIsoRing0"),
+            Variable("isoRing1", "localReco_caloIsoRing1"),
+            Variable("isoRing2", "localReco_caloIsoRing2"),
+            Variable("isoRing3", "localReco_caloIsoRing3"),
+            Variable("isoRing4", "localReco_caloIsoRing4"),
+        ],
+        "NTrees=800:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
+    BarrelIDConfig("barrel2",
+        [
+            Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
+            Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
+            Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
+            Variable("etaWidth", "gedReco_etaWidth"),
+            Variable("phiWidth", "gedReco_phiWidth"),
+            Variable("full5x5_r9", "gedReco_full5x5_r9"),
+            Variable("full5x5_s4", "gedReco_full5x5_s4"),
+            Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
+            Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
+            Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
+            Variable("photonIso", "gedReco_photonIso"),
+            Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
+            Variable("scRawEnergy", "gedReco_scRawEnergy"),
+            Variable("trkSumPt", "gedReco_trkSumPtSolidConeDR04"),
+            Variable("eVeto", "gedReco_conversionSafeElectronVeto"),
+            Variable("rho", "rho"),
+        ],
+        "NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
+    EndcapIDConfig("endcap2",
+        [
+            Variable("sigmaUU", "localReco_sigmaUU"),
+            Variable("sigmaVV", "localReco_sigmaVV"),
+            Variable("e4oEtot", "localReco_e4oEtot"),
+            Variable("layerEfrac10", "localReco_layerEfrac10"),
+            Variable("layerEfrac90", "localReco_layerEfrac90"),
+            Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
+            Variable("depthCompatibility", "localReco_depthCompatibility"),
+            Variable("isoRing0", "localReco_caloIsoRing0"),
+            Variable("isoRing1", "localReco_caloIsoRing1"),
+            Variable("isoRing2", "localReco_caloIsoRing2"),
+            Variable("isoRing3", "localReco_caloIsoRing3"),
+            Variable("isoRing4", "localReco_caloIsoRing4"),
+            Variable("scEnergy", "localReco_scEnergy"),
+            Variable("matchedTrackChi2", "localReco_matchedGsfChi2"),
+            Variable("matchedTrackLostHits", "localReco_matchedGsfLostHits"),
+            Variable("rho", "rho"),
+        ],
+        "NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
+    BarrelIDConfig("barrel2noDY",
+        [
+            Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
+            Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
+            Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
+            Variable("etaWidth", "gedReco_etaWidth"),
+            Variable("phiWidth", "gedReco_phiWidth"),
+            Variable("full5x5_r9", "gedReco_full5x5_r9"),
+            Variable("full5x5_s4", "gedReco_full5x5_s4"),
+            Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
+            Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
+            Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
+            Variable("photonIso", "gedReco_photonIso"),
+            Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
+            Variable("scRawEnergy", "gedReco_scRawEnergy"),
+            Variable("trkSumPt", "gedReco_trkSumPtSolidConeDR04"),
+            Variable("eVeto", "gedReco_conversionSafeElectronVeto"),
+            Variable("rho", "rho"),
+        ],
+        "NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles[:3]
+    ),
+    EndcapIDConfig("endcap2noDY",
+        [
+            Variable("sigmaUU", "localReco_sigmaUU"),
+            Variable("sigmaVV", "localReco_sigmaVV"),
+            Variable("e4oEtot", "localReco_e4oEtot"),
+            Variable("layerEfrac10", "localReco_layerEfrac10"),
+            Variable("layerEfrac90", "localReco_layerEfrac90"),
+            Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
+            Variable("depthCompatibility", "localReco_depthCompatibility"),
+            Variable("isoRing0", "localReco_caloIsoRing0"),
+            Variable("isoRing1", "localReco_caloIsoRing1"),
+            Variable("isoRing2", "localReco_caloIsoRing2"),
+            Variable("isoRing3", "localReco_caloIsoRing3"),
+            Variable("isoRing4", "localReco_caloIsoRing4"),
+            Variable("scEnergy", "localReco_scEnergy"),
+            Variable("matchedTrackChi2", "localReco_matchedGsfChi2"),
+            Variable("matchedTrackLostHits", "localReco_matchedGsfLostHits"),
+            Variable("rho", "rho"),
+        ],
+        "NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles[:3]
+    ),
+    BarrelIDConfig("barrelgrad",
+        [
+            Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
+            Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
+            Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
+            Variable("etaWidth", "gedReco_etaWidth"),
+            Variable("phiWidth", "gedReco_phiWidth"),
+            Variable("full5x5_r9", "gedReco_full5x5_r9"),
+            Variable("full5x5_s4", "gedReco_full5x5_s4"),
+            Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
+            Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
+            Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
+            Variable("photonIso", "gedReco_photonIso"),
+            Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
+            Variable("scRawEnergy", "gedReco_scRawEnergy"),
+            Variable("trkSumPt", "gedReco_trkSumPtSolidConeDR04"),
+            Variable("eVeto", "gedReco_conversionSafeElectronVeto"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.5:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
+    EndcapIDConfig("endcapgrad",
+        [
+            Variable("sigmaUU", "localReco_sigmaUU"),
+            Variable("sigmaVV", "localReco_sigmaVV"),
+            Variable("e4oEtot", "localReco_e4oEtot"),
+            Variable("layerEfrac10", "localReco_layerEfrac10"),
+            Variable("layerEfrac90", "localReco_layerEfrac90"),
+            Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
+            Variable("depthCompatibility", "localReco_depthCompatibility"),
+            Variable("isoRing0", "localReco_caloIsoRing0"),
+            Variable("isoRing1", "localReco_caloIsoRing1"),
+            Variable("isoRing2", "localReco_caloIsoRing2"),
+            Variable("isoRing3", "localReco_caloIsoRing3"),
+            Variable("isoRing4", "localReco_caloIsoRing4"),
+            Variable("scEnergy", "localReco_scEnergy"),
+            Variable("matchedTrackChi2", "localReco_matchedGsfChi2"),
+            Variable("matchedTrackLostHits", "localReco_matchedGsfLostHits"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.5:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
+    BarrelIDConfig("barrelgrad_lowDY",
+        [
+            Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
+            Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
+            Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
+            Variable("etaWidth", "gedReco_etaWidth"),
+            Variable("phiWidth", "gedReco_phiWidth"),
+            Variable("full5x5_r9", "gedReco_full5x5_r9"),
+            Variable("full5x5_s4", "gedReco_full5x5_s4"),
+            Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
+            Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
+            Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
+            Variable("photonIso", "gedReco_photonIso"),
+            Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
+            Variable("scRawEnergy", "gedReco_scRawEnergy"),
+            Variable("trkSumPt", "gedReco_trkSumPtSolidConeDR04"),
+            Variable("eVeto", "gedReco_conversionSafeElectronVeto"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.5:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
+    EndcapIDConfig("endcapgrad_lowDY",
+        [
+            Variable("sigmaUU", "localReco_sigmaUU"),
+            Variable("sigmaVV", "localReco_sigmaVV"),
+            Variable("e4oEtot", "localReco_e4oEtot"),
+            Variable("layerEfrac10", "localReco_layerEfrac10"),
+            Variable("layerEfrac90", "localReco_layerEfrac90"),
+            Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
+            Variable("depthCompatibility", "localReco_depthCompatibility"),
+            Variable("isoRing0", "localReco_caloIsoRing0"),
+            Variable("isoRing1", "localReco_caloIsoRing1"),
+            Variable("isoRing2", "localReco_caloIsoRing2"),
+            Variable("isoRing3", "localReco_caloIsoRing3"),
+            Variable("isoRing4", "localReco_caloIsoRing4"),
+            Variable("scEnergy", "localReco_scEnergy"),
+            Variable("matchedTrackChi2", "localReco_matchedGsfChi2"),
+            Variable("matchedTrackLostHits", "localReco_matchedGsfLostHits"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.5:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
 ]

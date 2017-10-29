@@ -13,19 +13,13 @@ if len(idConfig)==1:
 else:
     raise Exception("Check idconfigs in bdtCommon.py")
 
-filenames = [
-    "/data/ncsmith/932phoID_round2/GJets.root",
-    "/data/ncsmith/932phoID_round2/DiPhotonSherpa.root",
-    "/data/ncsmith/932phoID_round2/QCD_1.root",
-    "/data/ncsmith/932phoID_round2/DY2J.root",
-]
-
 idConfig.makeReader()
 
+filenames = bdtCommon.allInputFiles
 for filename in filenames:
     f = ROOT.TFile.Open(filename)
     tree = f.Get("ntupler/photons")
-    if not idConfig.mvaVariable.checkTree(tree):
+    if not all(var.checkTree(tree) for var in idConfig.varmap):
         print "File %s didn't have all the correct variables for this idconfig" % filename
         continue
 
@@ -35,7 +29,8 @@ for filename in filenames:
     mvaval = ROOT.std.vector("float")()
     tout.Branch(idConfig.name, mvaval)
     fm = ROOT.TTreeFormulaManager()
-    idConfig.mvaVariable.setTree(tree, fm)
+    for var in idConfig.varmap:
+        var.setTree(tree, fm)
     fm.Sync()
 
     nEntries = tree.GetEntries()
@@ -44,8 +39,9 @@ for filename in filenames:
         tree.GetEntry(entry)
         mvaval.clear()
         for i in range(fm.GetNdata()):
-            idConfig.mvaVariable.fill(i)
-            mvaval.push_back(idConfig.mvaVariable.val())
+            for var in idConfig.varmap:
+                var.fill(i)
+            mvaval.push_back(idConfig.evalReader())
         tout.Fill()
         if int(tout.GetEntries()*100./nEntries) > int((tout.GetEntries()-1)*100./nEntries):
             print "% 2d percent done" % int((tout.GetEntries()-1)*100./nEntries)
