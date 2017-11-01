@@ -31,8 +31,9 @@ for tree in trees:
 ROOT.gROOT.cd()
 nEntries = hreweight_tmp.GetEntries()
 hreweight_num = hreweight_tmp.Clone("hreweight_num")
+hreweight_num.Scale(1./hreweight_num.Integral())
 print "Total signal events:", nEntries
-reweight_denoms = []
+reweight_hists = []
 for i, tree in enumerate(trees):
     print "Making reweight denominator for input tree", filenames[i]
     hreweight = hreweight_num.Clone("hreweight_fin%d" % i)
@@ -41,10 +42,12 @@ for i, tree in enumerate(trees):
     tree.Draw("%s:%s>>hreweight_tmp" % (idConfig.reweightvar2.formula, idConfig.reweightvar1.formula), idConfig.bkgCut, "goff")
     print "File %s has %d bkg events" % (filenames[i], hreweight_tmp.GetEntries())
     nEntries += hreweight_tmp.GetEntries()
+    # normalize so bkg from bkg-free files doesn't dominate
+    hreweight_tmp.Scale(1./hreweight_tmp.Integral())
     hreweight.Divide(hreweight_tmp)
     if 'DY' in filenames[i]:
         hreweight.Scale(0.1)
-    reweight_denoms.append(hreweight)
+    reweight_hists.append(hreweight)
 
 print "Setting up output tree"
 fout = ROOT.TFile("%sin.root" % idConfig.name, "recreate")
@@ -58,7 +61,7 @@ tout.Branch("weight", weight, "weight/f")
 
 print "Filling, expect %d entries" % nEntries
 for i, tree in enumerate(trees):
-    hreweight = reweight_denoms[i]
+    hreweight = reweight_hists[i]
     fout.cd()
     hreweight.Write()
 
@@ -87,5 +90,5 @@ for i, tree in enumerate(trees):
 
 
 tout.Write()
-fout.Close()
+#fout.Close()
 

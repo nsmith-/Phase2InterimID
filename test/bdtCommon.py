@@ -53,7 +53,8 @@ class IDConfig:
 
 
 class BarrelIDConfig(IDConfig):
-    trainingCut = "gedReco_pt>25 && abs(gedReco_eta)<1.4"  # " && (gedReco_iGen<0||abs(gen_parentId[gedReco_iGen])!=11)"
+    preselection = "1."
+    trainingCut = preselection + " && gedReco_pt>25 && abs(gedReco_eta)<1.4 && (gedReco_iGen<0||abs(gen_parentId[gedReco_iGen])!=11)"
     trueDef = "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_isPromptFinalState[gedReco_iGen]"
     trueCut = trainingCut + " && (%s)" % trueDef
     bkgCut = trainingCut + " && !(%s)" % trueDef
@@ -68,7 +69,8 @@ class BarrelIDConfig(IDConfig):
     
 
 class EndcapIDConfig(IDConfig):
-    trainingCut = "localReco_pt>25 && abs(localReco_eta)>1.5 && localReco_nLayers > 0 && abs(localReco_depthCompatibility) < 10. && localReco_seedEnergyFH/localReco_seedEnergyEE < 10."
+    preselection = "localReco_nLayers > 0 && abs(localReco_depthCompatibility) < 10. && localReco_seedEnergyFH/localReco_seedEnergyEE < 10."
+    trainingCut = preselection + " && localReco_pt>25 && abs(localReco_eta)>1.5 && (localReco_iGen<0||abs(gen_parentId[localReco_iGen])!=11)"
     trueDef = "localReco_iGen>=0 && gen_id[localReco_iGen] == 22 && gen_isPromptFinalState[localReco_iGen]"
     trueCut = trainingCut + " && (%s)" % trueDef
     bkgCut = trainingCut + " && !(%s)" % trueDef
@@ -80,6 +82,22 @@ class EndcapIDConfig(IDConfig):
     ]
     reweightvar1, reweightvar2, trainvar, truevar = _def_varmap[0:4]
     hreweight_def = ROOT.TH2D("hreweight_def_endcap", "Bkg to signal reweight;Photon p_{T} (GeV);Photon |#eta|", 25, 25, 150, 5, 1.5, 3.)
+
+
+class EndcapIDConfigRun2(EndcapIDConfig):
+    preselection = "1."
+    trainingCut = preselection + " && localReco_pt>25 && abs(localReco_eta)>1.5 && (localReco_iGen<0||abs(gen_parentId[localReco_iGen])!=11)"
+    trueDef = "localReco_iGen>=0 && gen_id[localReco_iGen] == 22 && gen_isPromptFinalState[localReco_iGen]"
+    trueCut = trainingCut + " && (%s)" % trueDef
+    bkgCut = trainingCut + " && !(%s)" % trueDef
+    _def_varmap = [
+        Variable("pt", "localReco_pt", train=False),
+        Variable("abseta", "abs(localReco_eta)", train=False),
+        Variable("isTrained", trainingCut, train=False),
+        Variable("isTrue", trueCut, train=False),
+    ]
+    reweightvar1, reweightvar2, trainvar, truevar = _def_varmap[0:4]
+    hreweight_def = ROOT.TH2D("hreweight_def_endcap_run2", "Bkg to signal reweight;Photon p_{T} (GeV);Photon |#eta|", 25, 25, 150, 5, 1.5, 2.5)
 
 
 allInputFiles = [
@@ -298,5 +316,95 @@ idconfigs = [
         ],
         "BoostType=Grad:Shrinkage=0.5:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=3:nCuts=100",
         allInputFiles
+    ),
+    BarrelIDConfig("barrelgradeta",
+        [
+            Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
+            Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
+            Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
+            Variable("etaWidth", "gedReco_etaWidth"),
+            Variable("phiWidth", "gedReco_phiWidth"),
+            Variable("full5x5_r9", "gedReco_full5x5_r9"),
+            Variable("full5x5_s4", "gedReco_full5x5_s4"),
+            Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
+            Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
+            Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
+            Variable("photonIso", "gedReco_photonIso"),
+            Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
+            Variable("scRawEnergy", "gedReco_scRawEnergy"),
+            Variable("scEta", "gedReco_scEta"),
+            Variable("trkSumPt", "gedReco_trkSumPtSolidConeDR04"),
+            Variable("eVeto", "gedReco_conversionSafeElectronVeto"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.5:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
+    EndcapIDConfig("endcapgradeta",
+        [
+            Variable("sigmaUU", "localReco_sigmaUU"),
+            Variable("sigmaVV", "localReco_sigmaVV"),
+            Variable("e4oEtot", "localReco_e4oEtot"),
+            Variable("layerEfrac10", "localReco_layerEfrac10"),
+            Variable("layerEfrac90", "localReco_layerEfrac90"),
+            Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
+            Variable("depthCompatibility", "localReco_depthCompatibility"),
+            Variable("isoRing0", "localReco_caloIsoRing0"),
+            Variable("isoRing1", "localReco_caloIsoRing1"),
+            Variable("isoRing2", "localReco_caloIsoRing2"),
+            Variable("isoRing3", "localReco_caloIsoRing3"),
+            Variable("isoRing4", "localReco_caloIsoRing4"),
+            Variable("scEnergy", "localReco_scEnergy"),
+            Variable("scEta", "localReco_scEta"),
+            Variable("matchedTrackChi2", "localReco_matchedGsfChi2"),
+            Variable("matchedTrackLostHits", "localReco_matchedGsfLostHits"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.5:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=3:nCuts=100",
+        allInputFiles
+    ),
+    BarrelIDConfig("barrelgradeta_run2",
+        [
+            Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
+            Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
+            Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
+            Variable("etaWidth", "gedReco_etaWidth"),
+            Variable("phiWidth", "gedReco_phiWidth"),
+            Variable("full5x5_r9", "gedReco_full5x5_r9"),
+            Variable("full5x5_s4", "gedReco_full5x5_s4"),
+            Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
+            Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
+            Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
+            Variable("photonIso", "gedReco_photonIso"),
+            Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
+            Variable("scRawEnergy", "gedReco_scRawEnergy"),
+            Variable("scEta", "gedReco_scEta"),
+            Variable("trkSumPt", "gedReco_trkSumPtSolidConeDR04"),
+            Variable("eVeto", "gedReco_conversionSafeElectronVeto"),
+        ],
+        "BoostType=Grad:Shrinkage=0.5:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=3:nCuts=100",
+        ["/data/ncsmith/932phoID_round2/GJets13TeV.root"]
+    ),
+    EndcapIDConfigRun2("endcapgradeta_run2",
+        [
+            Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
+            Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
+            Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
+            Variable("etaWidth", "gedReco_etaWidth"),
+            Variable("phiWidth", "gedReco_phiWidth"),
+            Variable("full5x5_r9", "gedReco_full5x5_r9"),
+            Variable("full5x5_s4", "gedReco_full5x5_s4"),
+            Variable("hadTowOverEm", "gedReco_hadTowOverEm"),
+            Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
+            Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
+            Variable("photonIso", "gedReco_photonIso"),
+            Variable("hasPixelSeed", "gedReco_hasPixelSeed"),
+            Variable("scRawEnergy", "gedReco_scRawEnergy"),
+            Variable("scEta", "gedReco_scEta"),
+            Variable("trkSumPt", "gedReco_trkSumPtSolidConeDR04"),
+            Variable("eVeto", "gedReco_conversionSafeElectronVeto"),
+        ],
+        "BoostType=Grad:Shrinkage=0.5:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=3:nCuts=100",
+        ["/data/ncsmith/932phoID_round2/GJets13TeV.root"]
     ),
 ]

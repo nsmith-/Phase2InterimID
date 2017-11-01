@@ -16,6 +16,9 @@ else:
 idConfig.makeReader()
 
 filenames = bdtCommon.allInputFiles
+if "_run2" in idConfig.name:
+    filenames = idConfig.inputFiles
+
 for filename in filenames:
     f = ROOT.TFile.Open(filename)
     tree = f.Get("ntupler/photons")

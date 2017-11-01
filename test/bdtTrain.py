@@ -19,6 +19,9 @@ bkgCut = ROOT.TCut(bkgcut)
 fIn = ROOT.TFile.Open("%sin.root" % idConfig.name)
 tIn = fIn.Get("tree")
 fOut = ROOT.TFile("%sout.root" % idConfig.name, "recreate")
+hists = [k.ReadObj() for k in fIn.GetListOfKeys() if k.GetClassName == "TH2D"]
+for h in hists:
+    h.Write()
 # Transformations=I;D;P;G,D:
 w = ROOT.TMVA.Factory(idConfig.name, fOut, "!V:!Silent:Color:DrawProgressBar:AnalysisType=Classification")
 d = ROOT.TMVA.DataLoader()
@@ -35,9 +38,6 @@ w.TrainAllMethods()
 w.TestAllMethods()
 w.EvaluateAllMethods()
 
-hrw = fIn.Get("hreweight")
-fOut.cd()
-hrw.Write()
 fOut.Close()
 ROOT.TMVA.mvas("default", "%sout.root" % idConfig.name, ROOT.TMVA.kCompareType)
 ROOT.gPad.Print("bdt_overtrain_%s.pdf" % idConfig.name)
