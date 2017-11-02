@@ -8,10 +8,9 @@ config.General.transferLogs = True
 config.JobType.pluginName = 'Analysis'
 config.JobType.psetName = 'testPhase2PhotonTuples.py'
 
-#config.Data.splitting = 'FileBased'
-#config.Data.unitsPerJob = 50
-config.Data.splitting = 'Automatic'
-config.General.instance = 'preprod'
+config.Data.splitting = 'FileBased'
+#config.Data.splitting = 'Automatic'
+#config.General.instance = 'preprod'
 
 config.Data.inputDBS = 'global'
 config.Data.outLFNDirBase = '/store/user/%s/932phoID_round2' % (getUsernameFromSiteDB())
@@ -34,19 +33,27 @@ pds_relval = [
 
 pds_photon = [
     '/DYToLL-M-50_2J_14TeV-madgraphMLM-pythia8/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
-    '/DYToLL-M-50_3J_14TeV-madgraphMLM-pythia8/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
     '/DiPhotonJetsBox_MGG-80toInf_14TeV-Sherpa/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
     '/GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCUETP8M1_14TeV_Pythia8/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
     '/QCD_Flat_Pt-15to7000_TuneCUETP8M1_14TeV_pythia8/PhaseIITDRFall17DR-PU200_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
+]
+
+pds_photon_noPU = [
+    '/DYToLL-M-50_2J_14TeV-madgraphMLM-pythia8/PhaseIITDRFall17DR-noPU_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
+    '/DiPhotonJetsBox_MGG-80toInf_14TeV-Sherpa/PhaseIITDRFall17DR-noPU_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
+    '/GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCUETP8M1_14TeV_Pythia8/PhaseIITDRFall17DR-noPU_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
+    '/QCD_Flat_Pt-15to7000_TuneCUETP8M1_14TeV_pythia8/PhaseIITDRFall17DR-noPU_93X_upgrade2023_realistic_v2-v1/GEN-SIM-RECO',
 ]
 
 pds_run2 = [
     '/GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCUETP8M1_13TeV_Pythia8/RunIISummer16DR80Premix-PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/AODSIM',
 ]
 
-pds = pds_run2
-config.JobType.pyCfgParams = ["phase2=0"]
-#config.JobType.numCores = 4
+pds = pds_photon
+# run2, photon = 50, photonpu0 = 10
+config.Data.unitsPerJob = 50
+#config.JobType.pyCfgParams = ["phase2=0"]
+config.JobType.numCores = 4
 
 if __name__ == '__main__':
     from CRABAPI.RawCommand import crabCommand

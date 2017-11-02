@@ -40,6 +40,10 @@
 #include "DataFormats/EgammaCandidates/interface/PhotonFwd.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
+#include "DataFormats/EcalRecHit/interface/EcalRecHit.h"
+#include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "SimDataFormats/CaloAnalysis/interface/SimCluster.h"
@@ -112,6 +116,7 @@ namespace {
     Long64_t lumi;
     Long64_t event;
     float rho;
+    float vtx_z;
     std::vector<float> gen_pt;
     std::vector<float> gen_eta;
     std::vector<float> gen_phi;
@@ -142,6 +147,8 @@ namespace {
     std::vector<int> gedReco_iGen;
     std::vector<EZBranch<reco::Photon>> gedReco_misc;
     std::vector<ValueMapBranch<reco::Photon>> gedReco_valuemaps;
+    std::vector<float> gedReco_energy_nmax12;
+    std::vector<float> gedReco_energy_nmax15;
     std::vector<float> gedReco_conversionSafeElectronVeto;
     std::vector<float> gedReco_TPmetric;
     std::vector<int> gedReco_TPid;
@@ -173,8 +180,10 @@ class Phase2PhotonTupler : public edm::one::EDAnalyzer<edm::one::SharedResources
     edm::EDGetTokenT<reco::GsfElectronCollection> gedGsfElectronsToken_;
     edm::EDGetTokenT<reco::ConversionCollection> conversionsToken_;
     edm::EDGetTokenT<reco::BeamSpot> beamspotToken_;
+    edm::EDGetTokenT<reco::VertexCollection> primaryVerticesToken_;
 
     bool doRecoContent_;
+    edm::EDGetTokenT<EcalRecHitCollection> ecalRecHitsToken_;
     edm::EDGetTokenT<SimClusterCollection> simClustersToken_;
     edm::EDGetTokenT<CaloParticleCollection> caloParticlesToken_;
     edm::EDGetTokenT<std::vector<SimTrack>> simTracksToken_;
@@ -202,7 +211,9 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   gedGsfElectronsToken_(consumes<reco::GsfElectronCollection>(iConfig.getParameter<edm::InputTag>("gedGsfElectrons"))),
   conversionsToken_(consumes<reco::ConversionCollection>(iConfig.getParameter<edm::InputTag>("conversions"))),
   beamspotToken_(consumes<reco::BeamSpot>(iConfig.getParameter<edm::InputTag>("beamspot"))),
+  primaryVerticesToken_(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("vertices"))),
   doRecoContent_(iConfig.getParameter<bool>("doRecoContent")),
+  ecalRecHitsToken_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("ecalRecHits"))),
   simClustersToken_(consumes<SimClusterCollection>(iConfig.getParameter<edm::InputTag>("simClusters"))),
   caloParticlesToken_(consumes<CaloParticleCollection>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
   simTracksToken_(consumes<std::vector<SimTrack>>(iConfig.getParameter<edm::InputTag>("simTracksSrc"))),
@@ -223,6 +234,7 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonTree_->Branch("lumi", &event_.lumi);
   photonTree_->Branch("event", &event_.event);
   photonTree_->Branch("rho",  &event_.rho, "rho/F");
+  photonTree_->Branch("vtx_z",  &event_.vtx_z, "vtx_z/F");
   photonTree_->Branch("gen_pt", &event_.gen_pt);
   photonTree_->Branch("gen_eta", &event_.gen_eta);
   photonTree_->Branch("gen_phi", &event_.gen_phi);
@@ -267,6 +279,8 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
       event_.gedReco_valuemaps.emplace_back(photonTree_, "gedReco_"+name, consumes<edm::ValueMap<float>>(gedRecoMisc.getParameter<edm::InputTag>(name)));
     }
   }
+  photonTree_->Branch("gedReco_energy_nmax12", &event_.gedReco_energy_nmax12);
+  photonTree_->Branch("gedReco_energy_nmax15", &event_.gedReco_energy_nmax15);
   photonTree_->Branch("gedReco_conversionSafeElectronVeto", &event_.gedReco_conversionSafeElectronVeto);
   if ( doPremixContent_ ) {
     photonTree_->Branch("gedReco_TPmetric", &event_.gedReco_TPmetric);
@@ -313,12 +327,17 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   Handle<reco::BeamSpot> beamspotH;
   iEvent.getByToken(beamspotToken_, beamspotH);
 
+  Handle<reco::VertexCollection> verticesH;
+  iEvent.getByToken(primaryVerticesToken_, verticesH);
+
+  Handle<EcalRecHitCollection> ecalRecHits;
   Handle<SimClusterCollection> simClustersH;
   Handle<CaloParticleCollection> caloParticlesH;
   Handle<std::vector<SimTrack>> simTracks;
   Handle<std::vector<SimVertex>> simVertices;
   std::vector<PhotonMCTruth> mcPhotons;
   if ( doRecoContent_ ) {
+    iEvent.getByToken(ecalRecHitsToken_, ecalRecHits);
     iEvent.getByToken(simClustersToken_, simClustersH);
     iEvent.getByToken(caloParticlesToken_, caloParticlesH);
     iEvent.getByToken(simTracksToken_ ,simTracks);
@@ -342,6 +361,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.event = iEvent.id().event();
 
   event_.rho = *rhoH;
+  event_.vtx_z = (verticesH->size()>0) ? verticesH->at(0).position().z() : 0.;
 
   event_.localReco_pt.clear();
   event_.localReco_eta.clear();
@@ -383,6 +403,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   for(auto&& b : event_.gedReco_misc) b.clear();
   for(auto&& b : event_.gedReco_valuemaps) b.clearAndSet(iEvent, photonsH);
   event_.gedReco_conversionSafeElectronVeto.clear();
+  event_.gedReco_energy_nmax12.clear();
+  event_.gedReco_energy_nmax15.clear();
   if ( doPremixContent_ ) {
     event_.gedReco_TPmetric.clear();
     event_.gedReco_TPid.clear();
@@ -402,6 +424,49 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     for(auto&& b : event_.gedReco_valuemaps) b.push_back(iPho);
 
     event_.gedReco_conversionSafeElectronVeto.push_back( !ConversionTools::hasMatchedPromptElectron(pho.superCluster(), gedGsfElectronsH, conversionsH, beamspotH->position()) );
+
+    // barrel energy algorithm to compensate for high pileup
+    // sort crystals in cluster, then add top 15 to find energy
+    if ( doRecoContent_ ) {
+      // Build map of unique crystals to their total energy used in supercluster
+      std::map<DetId, double> unique_cells;
+      double nCellsEffective{0.};
+      for( auto&& detid_frac : pho.superCluster()->hitsAndFractions() ) {
+        auto hit = ecalRecHits->find(detid_frac.first);
+        if ( hit == ecalRecHits->end() and detid_frac.first.subdetId() == DetId::Ecal ) {
+          std::cout << "uh oh, missing a hit" << std::endl;
+          continue;
+        }
+        else if ( hit == ecalRecHits->end() ) {
+          continue;
+        }
+        double frac = detid_frac.second;
+        unique_cells[detid_frac.first] += hit->energy() * frac;
+        nCellsEffective += frac;
+      }
+
+      // Copy map to vector and sort
+      std::vector<double> cells;
+      for( auto&& det_e : unique_cells ) {
+        cells.push_back(det_e.second);
+      }
+      std::sort(cells.begin(), cells.end());
+
+      // Sum top N crystals
+      double energy_nmax12{0.};
+      double energy_nmax15{0.};
+      size_t nCells{0u};
+      for(auto it=cells.rbegin(); it!=cells.rend(); ++it) {
+        if ( nCells < 12 ) energy_nmax12 += *it;
+        if ( nCells < 15 ) energy_nmax15 += *it;
+        if ( nCells == 15 ) break;
+        nCells++;
+      }
+
+      event_.gedReco_energy_nmax12.push_back( energy_nmax12 );
+      event_.gedReco_energy_nmax15.push_back( energy_nmax15 );
+    }
+
 
     if ( doPremixContent_ ) {
       std::cout << "New photon pt=" << pho.pt() << ", all calohits:" << std::endl;
