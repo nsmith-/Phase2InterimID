@@ -1,7 +1,7 @@
 from CRABClient.UserUtilities import config, getUsernameFromSiteDB
 config = config()
 
-config.General.workArea = 'crab_phase2photons_round2'
+config.General.workArea = 'crab_phase2photons_round3'
 config.General.transferOutputs = True
 config.General.transferLogs = True
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     for i, pd in enumerate(pds):
         (_, primaryDS, conditions, dataTier) = pd.split('/')
-        config.General.requestName = 'p2phoID_%d_%s' % (i, primaryDS)
+        config.General.requestName = 'p2phoIDr3_%d_%s' % (i, primaryDS)
         config.Data.outputDatasetTag = conditions
         config.Data.inputDataset = pd
         if dataTier == 'MINIAODSIM':

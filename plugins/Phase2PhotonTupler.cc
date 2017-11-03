@@ -140,6 +140,7 @@ namespace {
     std::vector<ValueMapBranch<reco::Photon>> localReco_valuemaps;
     std::vector<float> localReco_matchedGsfChi2;
     std::vector<float> localReco_matchedGsfLostHits;
+    std::vector<float> localReco_matchedGsfHits;
 
     std::vector<float> gedReco_pt;
     std::vector<float> gedReco_eta;
@@ -265,6 +266,7 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   }
   photonTree_->Branch("localReco_matchedGsfChi2", &event_.localReco_matchedGsfChi2);
   photonTree_->Branch("localReco_matchedGsfLostHits", &event_.localReco_matchedGsfLostHits);
+  photonTree_->Branch("localReco_matchedGsfHits", &event_.localReco_matchedGsfHits);
 
   photonTree_->Branch("gedReco_pt", &event_.gedReco_pt);
   photonTree_->Branch("gedReco_eta", &event_.gedReco_eta);
@@ -370,6 +372,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   for(auto&& b : event_.localReco_valuemaps) b.clearAndSet(iEvent, photonsH);
   event_.localReco_matchedGsfChi2.clear();
   event_.localReco_matchedGsfLostHits.clear();
+  event_.localReco_matchedGsfHits.clear();
   for(size_t iPho=0; iPho<photonsH->size(); ++iPho) {
     const auto& pho = photonsH->at(iPho);
     if ( not localRecoCut_(pho) ) continue;
@@ -387,6 +390,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       if ( nel == 1 ) {
         event_.localReco_matchedGsfChi2.push_back( el.gsfTrack()->chi2() );
         event_.localReco_matchedGsfLostHits.push_back( el.gsfTrack()->hitPattern().numberOfLostHits(reco::HitPattern::MISSING_INNER_HITS) );
+        event_.localReco_matchedGsfHits.push_back( el.gsfTrack()->hitPattern().trackerLayersWithMeasurement() );
       } else {
         std::cout << "We can find more than one electron from the same SC I guess?" << std::endl;
       }
@@ -394,6 +398,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     if ( nel == 0 ) {
       event_.localReco_matchedGsfChi2.push_back( 1.e5 );
       event_.localReco_matchedGsfLostHits.push_back( -1. );
+      event_.localReco_matchedGsfHits.push_back( 0. );
     }
   }
 
