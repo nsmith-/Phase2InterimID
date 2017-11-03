@@ -7,7 +7,7 @@ import bdtCommon
 # https://root-forum.cern.ch/t/creating-converter-when-using-ttreeformula/13845/2
 warnings.filterwarnings( action='ignore', category=RuntimeWarning, message='creating converter.*' )
 
-idConfig = filter(lambda x: x.name==sys.argv[-1], bdtCommon.idconfigs)
+idConfig = filter(lambda x: x.name==sys.argv[1], bdtCommon.idconfigs)
 if len(idConfig)==1:
     idConfig = idConfig[0]
 else:
@@ -18,6 +18,8 @@ idConfig.makeReader()
 filenames = bdtCommon.allInputFiles
 if "_run2" in idConfig.name:
     filenames = idConfig.inputFiles
+if len(sys.argv) > 2:
+    filenames = sys.argv[2:]
 
 for filename in filenames:
     f = ROOT.TFile.Open(filename)
