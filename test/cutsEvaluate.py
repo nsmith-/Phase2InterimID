@@ -72,9 +72,9 @@ chgIso = ":".join(["%s max(gedReco_chargedHadronIso - rho*%s,0.)" % (ea[0], ea[1
 neuIso = ":".join(["%s max(gedReco_neutralHadronIso - rho*%s,0.)" % (ea[0], ea[2]) for ea in EAs])
 phoIso = ":".join(["%s max(gedReco_photonIso        - rho*%s,0.)" % (ea[0], ea[3]) for ea in EAs])
 run2WPs_barrel = [
-    'gedReco_passElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.01031 && gedReco_hadronicOverEm < 0.0597 && ({chgIso}) < 1.295 && ({neuIso}) < 10.910+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 3.630+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
-    'gedReco_passElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.01022 && gedReco_hadronicOverEm < 0.0396 && ({chgIso}) < 0.441 && ({neuIso}) <  2.725+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 2.571+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
-    'gedReco_passElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.00994 && gedReco_hadronicOverEm < 0.0269 && ({chgIso}) < 0.202 && ({neuIso}) <  0.264+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 2.362+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
+    'gedReco_conversionSafeElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.01031 && gedReco_hadronicOverEm < 0.0597 && ({chgIso}) < 1.295 && ({neuIso}) < 10.910+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 3.630+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
+    'gedReco_conversionSafeElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.01022 && gedReco_hadronicOverEm < 0.0396 && ({chgIso}) < 0.441 && ({neuIso}) <  2.725+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 2.571+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
+    'gedReco_conversionSafeElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.00994 && gedReco_hadronicOverEm < 0.0269 && ({chgIso}) < 0.202 && ({neuIso}) <  0.264+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 2.362+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
 ]
 run2WPs_endcap = [
     'gedReco_hasPixelSeed && gedReco_full5x5_sigmaIetaIeta < 0.03013 && gedReco_hadronicOverEm < 0.0481 && ({chgIso}) < 1.011 && ({neuIso}) <  5.931+0.0163*gedReco_pt+0.000014*gedReco_pt^2 && ({phoIso}) < 6.641+0.0034*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
@@ -83,7 +83,7 @@ run2WPs_endcap = [
 ]
 run2WPs_endcap = [wp.replace("gedReco_", "localReco_") for wp in run2WPs_endcap]
 
-fout = ROOT.TFile.Open("plots_cuts_pix.root", "recreate")
+fout = ROOT.TFile.Open("plots_cuts.root", "recreate")
 
 # ROC curves
 rocBarrel = makeROC(trees[0:1], run2WPs_barrel, bdtCommon.BarrelIDConfig.trueCut, bdtCommon.BarrelIDConfig.bkgCut)
@@ -93,3 +93,9 @@ rocEndcap = makeROC(trees[0:1], run2WPs_endcap, bdtCommon.EndcapIDConfigRun2.tru
 rocEndcap.SetNameTitle("endcapCutsROC", "Run II cuts (PU 25)")
 rocEndcap.Write()
 
+rocBarrel = makeROC(trees[0:1], run2WPs_barrel, bdtCommon.BarrelIDConfig.trueCut, bdtCommon.BarrelIDConfig.bkgCut, False)
+rocBarrel.SetNameTitle("barrelCutsROCrej", "Run II cuts (PU 25)")
+rocBarrel.Write()
+rocEndcap = makeROC(trees[0:1], run2WPs_endcap, bdtCommon.EndcapIDConfigRun2.trueCut, bdtCommon.EndcapIDConfigRun2.bkgCut, False)
+rocEndcap.SetNameTitle("endcapCutsROCrej", "Run II cuts (PU 25)")
+rocEndcap.Write()
