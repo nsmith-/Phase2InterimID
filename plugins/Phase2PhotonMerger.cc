@@ -85,6 +85,8 @@ Phase2PhotonMerger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
   for(size_t iPho=0; iPho<endcapPhotonHandle->size(); ++iPho) {
     pat::Photon phoNew(endcapPhotonHandle->at(iPho));
     // phoNew.addUserFloat("mvaValue", endcapIDHandle->get(endcapInputId , iPho));
+    // Common access method
+    phoNew.addUserFloat("mvaValue", phoNew.userFloat("hgcPhotonMVAendcap"));
     if ( endcapCut_(phoNew) ) photons->push_back(phoNew);
   }
 

@@ -1,6 +1,6 @@
 Phase 2 Interim EGamma ID
 =========================
-This package has been used to develop photon IDs for the phase 2 HGCal TDR
+This package has been used to develop photon IDs for the phase 2 HGCal TDR, and now also serves as a recipe and helper code repository.
 
 Recipe
 ------
@@ -51,6 +51,7 @@ process.ntupler = cms.EDAnalyzer("MyTuples",
     ...
 )
 ```
+It is suggested to save the MVA value and cut later.  See below for working points.
 
 Running on PAT objects
 ----------------------
@@ -69,5 +70,15 @@ process.ntupler.patPhotonsSrc = cms.InputTag("phase2Photons")
 process.p = cms.Path( process.phase2Egamma + process.ntupler )
 ```
 See `test/testPhase2EgammaCollections.py` for a more complete example.
-The ID value is accessible as `userFloat("mvaValue")`
+The ID value is accessible as `userFloat("mvaValue")`.  Use `isEB()` to decide whether the photon is from HGCal multiclusters or standard barrel GED.
+It is suggested to save the MVA value and cut later.  See below for working points.
+
+Cut working points
+------------------
+Current MVA is `V4`, pass `>=` value.
+
+ | MVA name | Loose WP | Tight WP |
+ | -------- | -------- | -------- |
+ | barrelV4 |   0.00   |   0.56   |
+ | endcapV4 |   0.20   |   0.68   |
 
