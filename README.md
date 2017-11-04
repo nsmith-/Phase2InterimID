@@ -19,10 +19,13 @@ scram b -j 8
 RECO objects
 ------------
 In `RECO`, the electrons and photons are split into two collections for barrel and endcap,
-| `reco::GsfElectronCollection` | `gedGsfElectrons`                   | Barrel electrons from the particle-flow global event description                           |
-| `reco::GsfElectronCollection` | `ecalDrivenGsfElectronsFromMultiCl` | Endcap electrons using local GSF electron reconstruction seeded by the HGCal multiclusters |
-| `reco::PhotonCollection`      | `gedPhotons`                        | Barrel photons from the particle-flow global event description                             |
-| `reco::PhotonCollection`      | `photonsFromMultiCl`                | Endcap photons using local 'island cluster' reconstruction, seeded by HGCal multiclusters  |
+
+ | Product type                  | Product name                        | Description                                                                                |
+ |-------------------------------|-------------------------------------|--------------------------------------------------------------------------------------------|
+ | `reco::GsfElectronCollection` | `gedGsfElectrons`                   | Barrel electrons from the particle-flow global event description                           |
+ | `reco::GsfElectronCollection` | `ecalDrivenGsfElectronsFromMultiCl` | Endcap electrons using local GSF electron reconstruction seeded by the HGCal multiclusters |
+ | `reco::PhotonCollection`      | `gedPhotons`                        | Barrel photons from the particle-flow global event description                             |
+ | `reco::PhotonCollection`      | `photonsFromMultiCl`                | Endcap photons using local 'island cluster' reconstruction, seeded by HGCal multiclusters  |
 
 If you want to use RECO objects, you will have to load the two separate collections into your analysis.  If you prefer to use PAT objects, see below.
 All electron and photon ID MVA input variables are either part of the `reco::` object or available by running the following ValueMap producers.
