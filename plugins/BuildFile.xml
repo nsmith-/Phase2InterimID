@@ -6,6 +6,7 @@
 <use name="DataFormats/VertexReco"/>
 <use name="DataFormats/EgammaCandidates"/>
 <use name="DataFormats/HepMCCandidate"/>
+<use name="DataFormats/PatCandidates"/>
 <use name="SimDataFormats/CaloAnalysis"/>
 <use name="SimDataFormats/TrackingAnalysis"/>
 <use name="RecoEgamma/EgammaMCTools"/>

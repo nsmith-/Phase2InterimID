@@ -31,6 +31,7 @@ phoSrc = cms.InputTag("gedPhotons")
 if options.phase2:
     phoSrc = cms.InputTag("photonsFromMultiCl")
     process.load("RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi")
+    process.load("RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi")
     process.hgcalPhotonIDValueMap.photons = phoSrc
 
 process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
@@ -41,7 +42,7 @@ process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     genParticles = cms.InputTag("genParticles"),
     genCut = cms.string("pt>5 && status==1 && (abs(pdgId)==11 || pdgId==22)"),
     rhoSrc = cms.InputTag("fixedGridRhoFastjetAll"),
-    ecalDrivenElectrons = cms.InputTag("ecalDrivenGsfElectrons" if options.phase2 else "gedGsfElectrons"),
+    ecalDrivenElectrons = cms.InputTag("ecalDrivenGsfElectronsFromMultiCl" if options.phase2 else "gedGsfElectrons"),
     gedGsfElectrons = cms.InputTag("gedGsfElectrons"),
     conversions = cms.InputTag("conversions"),
     beamspot = cms.InputTag("offlineBeamSpot"),
@@ -60,7 +61,9 @@ process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
 
 common = cms.PSet(
     scEta = cms.string("superCluster().eta()"),
+    scEnergy = cms.string("superCluster().energy()"),
     scRawEnergy = cms.string("superCluster().rawEnergy()"),
+    seedOrigEnergy = cms.string("superCluster().seed().energy()"),
     hasPixelSeed = cms.string("hasPixelSeed()"),
 )
 
@@ -97,6 +100,7 @@ if options.phase2:
     )
     for key in process.hgcalPhotonIDValueMap.variables:
         setattr(process.ntupler.localRecoMisc, key, cms.InputTag("hgcalPhotonIDValueMap", key))
+    process.ntupler.localRecoMisc.mvaValue = cms.InputTag("hgcalPhotonMVA")
 else:
     process.ntupler.localRecoMisc = cms.PSet(process.ntupler.gedRecoMisc)
 
@@ -107,6 +111,7 @@ process.TFileService = cms.Service("TFileService",
 if options.phase2:
     process.p = cms.Path(
         process.hgcalPhotonIDValueMap  +
+        process.hgcalPhotonMVA +
         process.ntupler
     )
 else:
