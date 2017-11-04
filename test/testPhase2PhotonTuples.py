@@ -30,9 +30,10 @@ process.source = cms.Source ("PoolSource", fileNames = cms.untracked.vstring(opt
 phoSrc = cms.InputTag("gedPhotons")
 if options.phase2:
     phoSrc = cms.InputTag("photonsFromMultiCl")
-    process.load("RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi")
+    from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import hgcalPhotonIDValueMap
+    process.hgcPhotonID = hgcalPhotonIDValueMap.clone()
+    process.hgcPhotonID.photons = phoSrc
     process.load("RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi")
-    process.hgcalPhotonIDValueMap.photons = phoSrc
 
 process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     photons = phoSrc,
@@ -98,8 +99,8 @@ if options.phase2:
         seed_det = cms.string("superCluster().seed().hitsAndFractions().at(0).first.det()"),
         seed_subdet = cms.string("superCluster().seed().hitsAndFractions().at(0).first.subdetId()"),
     )
-    for key in process.hgcalPhotonIDValueMap.variables:
-        setattr(process.ntupler.localRecoMisc, key, cms.InputTag("hgcalPhotonIDValueMap", key))
+    for key in process.hgcPhotonID.variables:
+        setattr(process.ntupler.localRecoMisc, key, cms.InputTag("hgcPhotonID", key))
     process.ntupler.localRecoMisc.mvaValue = cms.InputTag("hgcalPhotonMVA")
 else:
     process.ntupler.localRecoMisc = cms.PSet(process.ntupler.gedRecoMisc)
@@ -110,7 +111,7 @@ process.TFileService = cms.Service("TFileService",
 
 if options.phase2:
     process.p = cms.Path(
-        process.hgcalPhotonIDValueMap  +
+        process.hgcPhotonID +
         process.hgcalPhotonMVA +
         process.ntupler
     )

@@ -238,15 +238,15 @@ for name, cut in efficiencies.iteritems():
 # Resolution
 if isinstance(idConfig, bdtCommon.EndcapIDConfig):
     cut = idConfig.trueCut + " && %s > %f" % (idConfig.name, wp95.GetVal())
-    for energy in ["scEnergy", "scRawEnergy", "seedOrigEnergy", "seedEnergy"]:
+    for energy in ["scRawEnergy", "seedEnergy"]:
         resAllE = resolutionPlot(trees[:2], "res_allPhotons_" + energy, "localReco_%s/(gen_pt[localReco_iGen]*cosh(gen_eta[localReco_iGen])):gen_pt[localReco_iGen]" % energy, cut, ptbinning, idConfig.name)
         resAllE.Write()
         resConvE = resolutionPlot(trees[:2], "res_unconverted_" + energy, "localReco_%s/(gen_pt[localReco_iGen]*cosh(gen_eta[localReco_iGen])):gen_pt[localReco_iGen]" % energy, cut+" && !(abs(gen_conversionZ[localReco_iGen])<290 && gen_conversionRho[localReco_iGen]<120)", ptbinning, idConfig.name)
         resConvE.Write()
 else:
     cut = idConfig.trueCut + " && %s > %f" % (idConfig.name, wp95.GetVal())
-    resAll = resolutionPlot(trees[:2], "res_allPhotons",   "gedReco_pt*cosh(gedReco_eta)/(gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])):gen_pt[gedReco_iGen]", cut, ptbinning, idConfig.name)
-    resConv = resolutionPlot(trees[:2], "res_unconverted", "gedReco_pt*cosh(gedReco_eta)/(gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])):gen_pt[gedReco_iGen]", cut+" && !(abs(gen_conversionZ[gedReco_iGen])<290 && gen_conversionRho[gedReco_iGen]<120)", ptbinning, idConfig.name)
+    resAll = resolutionPlot(trees[:2], "res_allPhotons",   "gedReco_energy_nmax15/(gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])):gen_pt[gedReco_iGen]", cut, ptbinning, idConfig.name)
+    resConv = resolutionPlot(trees[:2], "res_unconverted", "gedReco_energy_nmax15/(gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])):gen_pt[gedReco_iGen]", cut+" && !(abs(gen_conversionZ[gedReco_iGen])<290 && gen_conversionRho[gedReco_iGen]<120)", ptbinning, idConfig.name)
     resAll.Write()
     resConv.Write()
 
