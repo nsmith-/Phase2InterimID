@@ -16,18 +16,37 @@ popd
 scram b -j 8
 ```
 
-ValueMap Setup
---------------
-All electron and photon ID variables are either part of the `reco::` object or available by running
-the following ValueMap producers.
-```python
-process.load("RecoEgamma.EgammaTools.hgcalElectronIDValueMap_cfi") import hgcalElectronIDValueMap
-process.load("RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi") import hgcalPhotonIDValueMap
+RECO objects
+------------
+In `RECO`, the electrons and photons are split into two collections for barrel and endcap,
+| `reco::GsfElectronCollection` | `gedGsfElectrons`                   | Barrel electrons from the particle-flow global event description                           |
+| `reco::GsfElectronCollection` | `ecalDrivenGsfElectronsFromMultiCl` | Endcap electrons using local GSF electron reconstruction seeded by the HGCal multiclusters |
+| `reco::PhotonCollection`      | `gedPhotons`                        | Barrel photons from the particle-flow global event description                             |
+| `reco::PhotonCollection`      | `photonsFromMultiCl`                | Endcap photons using local 'island cluster' reconstruction, seeded by HGCal multiclusters  |
 
-# example
-process.path = cms.Path(process.hgcalElectronIDValueMap + process.hgcalPhotonIDValueMap + process.ntupler)
+If you want to use RECO objects, you will have to load the two separate collections into your analysis.  If you prefer to use PAT objects, see below.
+All electron and photon ID MVA input variables are either part of the `reco::` object or available by running the following ValueMap producers.
+```python
+from RecoEgamma.EgammaTools.hgcalElectronIDValueMap_cfi import hgcalElectronIDValueMap
+from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import hgcalPhotonIDValueMap
+from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
+
+# Make sure all 4 of these are in path or task
+process.hgcElectronID = hgcalElectronIDValueMap.clone()
+process.hgcPhotonID = hgcalPhotonIDValueMap.clone()
+process.hgcPhotonMVAbarrel = hgcalPhotonMVA.clone()
+process.hgcPhotonMVAendcap = hgcalPhotonMVA.clone(photons=cms.InputTag("gedPhotons"))
+
+# e.g. 
+process.ntupler = cms.EDAnalyzer("MyTuples",
+    barrelPhotons = cms.InputTag("gedPhotons"),
+    barrelPhoMva  = cms.InputTag("hgcPhotonMVAbarrel"),
+    endcapPhotons = cms.InputTag("photonsFromMultiCl"),
+    endcapPhoMva  = cms.InputTag("hgcPhotonMVAendcap"),
+    ...
+)
 ```
 
-BDT Reader
-----------
+PAT objects
+-----------
 TODO
