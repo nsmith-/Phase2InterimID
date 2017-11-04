@@ -392,7 +392,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         event_.localReco_matchedGsfLostHits.push_back( el.gsfTrack()->hitPattern().numberOfLostHits(reco::HitPattern::MISSING_INNER_HITS) );
         event_.localReco_matchedGsfHits.push_back( el.gsfTrack()->hitPattern().trackerLayersWithMeasurement() );
       } else {
-        std::cout << "We can find more than one electron from the same SC I guess?" << std::endl;
+        // std::cout << "We can find more than one electron from the same SC I guess?" << std::endl;
       }
     }
     if ( nel == 0 ) {
@@ -406,7 +406,7 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.gedReco_eta.clear();
   event_.gedReco_phi.clear();
   for(auto&& b : event_.gedReco_misc) b.clear();
-  for(auto&& b : event_.gedReco_valuemaps) b.clearAndSet(iEvent, photonsH);
+  for(auto&& b : event_.gedReco_valuemaps) b.clearAndSet(iEvent, gedPhotonsH);
   event_.gedReco_conversionSafeElectronVeto.clear();
   event_.gedReco_energy_nmax12.clear();
   event_.gedReco_energy_nmax15.clear();

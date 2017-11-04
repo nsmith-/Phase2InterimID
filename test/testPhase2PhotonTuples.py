@@ -33,7 +33,9 @@ if options.phase2:
     from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import hgcalPhotonIDValueMap
     process.hgcPhotonID = hgcalPhotonIDValueMap.clone()
     process.hgcPhotonID.photons = phoSrc
-    process.load("RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi")
+    from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
+    process.hgcPhotonMVAbarrel = hgcalPhotonMVA.clone(photons=cms.InputTag("gedPhotons"))
+    process.hgcPhotonMVAendcap = hgcalPhotonMVA.clone()
 
 process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     photons = phoSrc,
@@ -91,6 +93,7 @@ process.ntupler.gedRecoMisc = cms.PSet(
     photonIso = cms.string("photonIso()"),
     trkSumPtSolidConeDR04 = cms.string("trkSumPtSolidConeDR04()"),
     nTrkSolidConeDR04 = cms.string("nTrkSolidConeDR04()"),
+    mvaValue = cms.InputTag("hgcPhotonMVAbarrel"),
 )
 
 if options.phase2:
@@ -101,7 +104,7 @@ if options.phase2:
     )
     for key in process.hgcPhotonID.variables:
         setattr(process.ntupler.localRecoMisc, key, cms.InputTag("hgcPhotonID", key))
-    process.ntupler.localRecoMisc.mvaValue = cms.InputTag("hgcalPhotonMVA")
+    process.ntupler.localRecoMisc.mvaValue = cms.InputTag("hgcPhotonMVAendcap")
 else:
     process.ntupler.localRecoMisc = cms.PSet(process.ntupler.gedRecoMisc)
 
@@ -112,7 +115,8 @@ process.TFileService = cms.Service("TFileService",
 if options.phase2:
     process.p = cms.Path(
         process.hgcPhotonID +
-        process.hgcalPhotonMVA +
+        process.hgcPhotonMVAbarrel +
+        process.hgcPhotonMVAendcap +
         process.ntupler
     )
 else:

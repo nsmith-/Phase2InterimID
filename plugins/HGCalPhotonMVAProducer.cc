@@ -178,8 +178,8 @@ HGCalPhotonMVAProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetu
       barrelVars_[2]  = pho.full5x5_showerShapeVariables().sigmaIphiIphi; // full5x5_sigmaIphiIphi
       barrelVars_[3]  = pho.superCluster()->etaWidth(); // etaWidth
       barrelVars_[4]  = pho.superCluster()->phiWidth(); // phiWidth
-      barrelVars_[5]  = pho.r9(); // full5x5_r9
-      barrelVars_[6]  = pho.showerShapeVariables().e2x2/pho.showerShapeVariables().e5x5; // full5x5_s4
+      barrelVars_[5]  = pho.full5x5_r9(); // full5x5_r9
+      barrelVars_[6]  = pho.full5x5_showerShapeVariables().e2x2/pho.full5x5_showerShapeVariables().e5x5; // full5x5_s4
       barrelVars_[7]  = pho.hadronicOverEm(); // hadronicOverEm
       barrelVars_[8]  = pho.chargedHadronIso(); // chargedHadronIso
       barrelVars_[9]  = pho.neutralHadronIso(); // neutralHadronIso

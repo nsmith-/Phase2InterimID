@@ -16,8 +16,8 @@ popd
 scram b -j 8
 ```
 
-RECO objects
-------------
+Running on RECO tier
+--------------------
 In `RECO`, the electrons and photons are split into two collections for barrel and endcap,
 
  | Product type                  | Product name                        | Description                                                                                |
@@ -32,13 +32,15 @@ All electron and photon ID MVA input variables are either part of the `reco::` o
 ```python
 from RecoEgamma.EgammaTools.hgcalElectronIDValueMap_cfi import hgcalElectronIDValueMap
 from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import hgcalPhotonIDValueMap
+# TODO: electron
 from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
 
-# Make sure all 4 of these are in path or task
+# Make sure all of these are in path or task
 process.hgcElectronID = hgcalElectronIDValueMap.clone()
 process.hgcPhotonID = hgcalPhotonIDValueMap.clone()
-process.hgcPhotonMVAbarrel = hgcalPhotonMVA.clone()
-process.hgcPhotonMVAendcap = hgcalPhotonMVA.clone(photons=cms.InputTag("gedPhotons"))
+# TODO: electron
+process.hgcPhotonMVAbarrel = hgcalPhotonMVA.clone(photons=cms.InputTag("gedPhotons"))
+process.hgcPhotonMVAendcap = hgcalPhotonMVA.clone()
 
 # e.g. 
 process.ntupler = cms.EDAnalyzer("MyTuples",
@@ -50,6 +52,22 @@ process.ntupler = cms.EDAnalyzer("MyTuples",
 )
 ```
 
-PAT objects
------------
-TODO
+Running on PAT objects
+----------------------
+No endcap EGamma collections exist in MiniAOD yet.  See [here](https://github.com/cms-sw/cmssw/pull/21037) for status.
+However, one can always run with `secondaryInputFiles` to access the RECO collections.  In CRAB, there is a simple `useParent` option.
+
+To aid in this, a `cff` has been made that forms the endcap PAT collections, runs ID on both barrel and endcap photons, and produces a merged collection with embedded MVA values.
+It can be imported as follows:
+```python
+process.load("RecoEgamma.Phase2InterimID.phase2EgammaPAT_cff")
+# The phase2Egamma sequence won't work in scheduled mode
+process.options.allowUnscheduled = cms.untracked.bool(True)
+
+# e.g.
+process.ntupler.patPhotonsSrc = cms.InputTag("phase2Photons")
+process.p = cms.Path( process.phase2Egamma + process.ntupler )
+```
+See `test/testPhase2EgammaCollections.py` for a more complete example.
+The ID value is accessible as `userFloat("mvaValue")`
+
