@@ -10,7 +10,7 @@ cd CMSSW_9_3_2/src
 cmsenv
 git cms-init
 git cms-merge-topic -u nsmith-:EgammaFromMultiCl_932
-mkdir RecoEgamma && pushd RecoEgamma
+mkdir -p RecoEgamma && pushd RecoEgamma
 git clone -b integrated git@github.com:nsmith-/Phase2InterimID.git
 popd
 scram b -j 8
@@ -67,6 +67,7 @@ process.options.allowUnscheduled = cms.untracked.bool(True)
 
 # e.g.
 process.ntupler.patPhotonsSrc = cms.InputTag("phase2Photons")
+# TODO: electron
 process.p = cms.Path( process.phase2Egamma + process.ntupler )
 ```
 See `test/testPhase2EgammaCollections.py` for a more complete example.
