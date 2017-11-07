@@ -120,6 +120,7 @@ namespace {
     std::vector<float> gen_pt;
     std::vector<float> gen_eta;
     std::vector<float> gen_phi;
+    std::vector<float> gen_vtxZ;
     std::vector<int> gen_id;
     std::vector<int> gen_parentId;
     std::vector<float> gen_fBrem;
@@ -135,6 +136,8 @@ namespace {
     std::vector<float> localReco_pt;
     std::vector<float> localReco_eta;
     std::vector<float> localReco_phi;
+    std::vector<float> localReco_seedRho;
+    std::vector<float> localReco_seedZ;
     std::vector<int> localReco_iGen;
     std::vector<EZBranch<reco::Photon>> localReco_misc;
     std::vector<ValueMapBranch<reco::Photon>> localReco_valuemaps;
@@ -145,6 +148,8 @@ namespace {
     std::vector<float> gedReco_pt;
     std::vector<float> gedReco_eta;
     std::vector<float> gedReco_phi;
+    std::vector<float> gedReco_scRho;
+    std::vector<float> gedReco_scZ;
     std::vector<int> gedReco_iGen;
     std::vector<EZBranch<reco::Photon>> gedReco_misc;
     std::vector<ValueMapBranch<reco::Photon>> gedReco_valuemaps;
@@ -239,6 +244,7 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonTree_->Branch("gen_pt", &event_.gen_pt);
   photonTree_->Branch("gen_eta", &event_.gen_eta);
   photonTree_->Branch("gen_phi", &event_.gen_phi);
+  photonTree_->Branch("gen_vtxZ", &event_.gen_vtxZ);
   photonTree_->Branch("gen_id", &event_.gen_id);
   photonTree_->Branch("gen_parentId", &event_.gen_parentId);
   photonTree_->Branch("gen_fBrem", &event_.gen_fBrem);
@@ -254,6 +260,8 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonTree_->Branch("localReco_pt", &event_.localReco_pt);
   photonTree_->Branch("localReco_eta", &event_.localReco_eta);
   photonTree_->Branch("localReco_phi", &event_.localReco_phi);
+  photonTree_->Branch("localReco_seedRho", &event_.localReco_seedRho);
+  photonTree_->Branch("localReco_seedZ", &event_.localReco_seedZ);
   photonTree_->Branch("localReco_iGen", &event_.localReco_iGen);
   auto localRecoMisc = iConfig.getParameter<edm::ParameterSet>("localRecoMisc");
   for (auto name : localRecoMisc.getParameterNames()) {
@@ -271,6 +279,8 @@ Phase2PhotonTupler::Phase2PhotonTupler(const edm::ParameterSet& iConfig):
   photonTree_->Branch("gedReco_pt", &event_.gedReco_pt);
   photonTree_->Branch("gedReco_eta", &event_.gedReco_eta);
   photonTree_->Branch("gedReco_phi", &event_.gedReco_phi);
+  photonTree_->Branch("gedReco_scRho", &event_.gedReco_scRho);
+  photonTree_->Branch("gedReco_scZ", &event_.gedReco_scZ);
   photonTree_->Branch("gedReco_iGen", &event_.gedReco_iGen);
   auto gedRecoMisc = iConfig.getParameter<edm::ParameterSet>("gedRecoMisc");
   for (auto name : gedRecoMisc.getParameterNames()) {
@@ -368,6 +378,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.localReco_pt.clear();
   event_.localReco_eta.clear();
   event_.localReco_phi.clear();
+  event_.localReco_seedRho.clear();
+  event_.localReco_seedZ.clear();
   for(auto&& b : event_.localReco_misc) b.clear();
   for(auto&& b : event_.localReco_valuemaps) b.clearAndSet(iEvent, photonsH);
   event_.localReco_matchedGsfChi2.clear();
@@ -380,6 +392,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     event_.localReco_pt.push_back(pho.pt());
     event_.localReco_eta.push_back(pho.eta());
     event_.localReco_phi.push_back(pho.phi());
+    event_.localReco_seedRho.push_back(pho.superCluster()->seed()->position().rho());
+    event_.localReco_seedZ.push_back(pho.superCluster()->seed()->position().z());
     for(auto&& b : event_.localReco_misc) b.push_back(pho);
     for(auto&& b : event_.localReco_valuemaps) b.push_back(iPho);
    
@@ -405,6 +419,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.gedReco_pt.clear();
   event_.gedReco_eta.clear();
   event_.gedReco_phi.clear();
+  event_.gedReco_scRho.clear();
+  event_.gedReco_scZ.clear();
   for(auto&& b : event_.gedReco_misc) b.clear();
   for(auto&& b : event_.gedReco_valuemaps) b.clearAndSet(iEvent, gedPhotonsH);
   event_.gedReco_conversionSafeElectronVeto.clear();
@@ -425,6 +441,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     event_.gedReco_pt.push_back(pho.pt());
     event_.gedReco_eta.push_back(pho.eta());
     event_.gedReco_phi.push_back(pho.phi());
+    event_.gedReco_scRho.push_back(pho.superCluster()->position().rho());
+    event_.gedReco_scZ.push_back(pho.superCluster()->position().z());
     for(auto&& b : event_.gedReco_misc) b.push_back(pho);
     for(auto&& b : event_.gedReco_valuemaps) b.push_back(iPho);
 
@@ -523,6 +541,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   event_.gen_pt.clear();
   event_.gen_eta.clear();
   event_.gen_phi.clear();
+  event_.gen_vtxZ.clear();
+  std::vector<math::XYZPoint> genPoints;
   event_.gen_id.clear();
   event_.gen_parentId.clear();
   event_.gen_isPromptFinalState.clear();
@@ -540,6 +560,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     event_.gen_pt.push_back(gp.pt());
     event_.gen_eta.push_back(gp.eta());
     event_.gen_phi.push_back(gp.phi());
+    event_.gen_vtxZ.push_back(gp.vertex().z());
+    genPoints.push_back(gp.vertex());
     event_.gen_id.push_back(gp.pdgId());
     event_.gen_parentId.push_back(parentId(gp));
     event_.gen_isPromptFinalState.push_back(gp.isPromptFinalState());
@@ -598,7 +620,10 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     int iLocalReco = -1;
     float minDrLocalReco = 999.;
     for (size_t iReco=0; iReco<event_.localReco_pt.size(); ++iReco) {
-      float drTemp = reco::deltaR(gp.eta(), gp.phi(), event_.localReco_eta[iReco], event_.localReco_phi[iReco]);
+      // To get correct eta if primary vertex is incorrect
+      // Don't care about phi here
+      auto disp = math::XYZPoint(event_.localReco_seedRho[iReco], 0., event_.localReco_seedZ[iReco]) - gp.vertex();
+      float drTemp = reco::deltaR(gp.eta(), gp.phi(), disp.eta(), event_.localReco_phi[iReco]);
       if ( drTemp < minDrLocalReco ) {
         iLocalReco = iReco;
         minDrLocalReco = drTemp;
@@ -610,7 +635,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     int iGedReco = -1;
     float minDrGedReco = 999.;
     for (size_t iReco=0; iReco<event_.gedReco_pt.size(); ++iReco) {
-      float drTemp = reco::deltaR(gp.eta(), gp.phi(), event_.gedReco_eta[iReco], event_.gedReco_phi[iReco]);
+      auto disp = math::XYZPoint(event_.gedReco_scRho[iReco], 0., event_.gedReco_scZ[iReco]) - gp.vertex();
+      float drTemp = reco::deltaR(gp.eta(), gp.phi(), disp.eta(), event_.gedReco_phi[iReco]);
       if ( drTemp < minDrGedReco ) {
         iGedReco = iReco;
         minDrGedReco = drTemp;
@@ -627,7 +653,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     int local_iGen = -1;
     float minDrLocalGen = 999.;
     for (size_t iGen=0; iGen<event_.gen_pt.size(); ++iGen) {
-      float drTemp = reco::deltaR(event_.gen_eta[iGen], event_.gen_phi[iGen], event_.localReco_eta[iReco], event_.localReco_phi[iReco]);
+      auto disp = math::XYZPoint(event_.localReco_seedRho[iReco], 0., event_.localReco_seedZ[iReco]) - genPoints[iGen];
+      float drTemp = reco::deltaR(event_.gen_eta[iGen], event_.gen_phi[iGen], disp.eta(), event_.localReco_phi[iReco]);
       if ( drTemp < minDrLocalGen ) {
         local_iGen = iGen;
         minDrLocalGen = drTemp;
@@ -642,7 +669,8 @@ Phase2PhotonTupler::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     int ged_iGen = -1;
     float minDrGedGen = 999.;
     for (size_t iGen=0; iGen<event_.gen_pt.size(); ++iGen) {
-      float drTemp = reco::deltaR(event_.gen_eta[iGen], event_.gen_phi[iGen], event_.gedReco_eta[iReco], event_.gedReco_phi[iReco]);
+      auto disp = math::XYZPoint(event_.gedReco_scRho[iReco], 0., event_.gedReco_scZ[iReco]) - genPoints[iGen];
+      float drTemp = reco::deltaR(event_.gen_eta[iGen], event_.gen_phi[iGen], disp.eta(), event_.gedReco_phi[iReco]);
       if ( drTemp < minDrGedGen ) {
         ged_iGen = iGen;
         minDrGedGen = drTemp;
