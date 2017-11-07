@@ -94,10 +94,10 @@ process.ntupler.gedRecoMisc = cms.PSet(
     photonIso = cms.string("photonIso()"),
     trkSumPtSolidConeDR04 = cms.string("trkSumPtSolidConeDR04()"),
     nTrkSolidConeDR04 = cms.string("nTrkSolidConeDR04()"),
-    mvaValue = cms.InputTag("hgcPhotonMVAbarrel"),
 )
 
 if options.phase2:
+    process.ntupler.gedRecoMisc.mvaValue = cms.InputTag("hgcPhotonMVAbarrel")
     process.ntupler.localRecoMisc = cms.PSet(
         common,
         seed_det = cms.string("superCluster().seed().hitsAndFractions().at(0).first.det()"),

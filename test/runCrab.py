@@ -53,7 +53,7 @@ pds = pds_photon
 config.Data.unitsPerJob = 30
 #config.JobType.pyCfgParams = ["phase2=0"]
 config.JobType.numCores = 4
-# config.Data.totalUnits = 20
+# config.Data.totalUnits = 20*50
 
 if __name__ == '__main__':
     from CRABAPI.RawCommand import crabCommand
