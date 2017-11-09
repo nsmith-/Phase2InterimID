@@ -63,7 +63,7 @@ class IDConfig:
 
 class BarrelIDConfig(IDConfig):
     preselection = "1."
-    trainingCut = preselection + " && gedReco_pt>20 && abs(gedReco_eta)<1.4 && (gedReco_iGen<0||abs(gen_parentId[gedReco_iGen])!=11)"
+    trainingCut = preselection + " && gedReco_pt>25 && abs(gedReco_eta)<1.4 && (gedReco_iGen<0||abs(gen_parentId[gedReco_iGen])!=11)"
     trueDef = "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_isPromptFinalState[gedReco_iGen]"
     trueCut = trainingCut + " && (%s)" % trueDef
     bkgCut = trainingCut + " && !(%s)" % trueDef
@@ -95,13 +95,13 @@ class EndcapIDConfig(IDConfig):
 
 class EndcapIDConfigRun2(EndcapIDConfig):
     preselection = "1."
-    trainingCut = preselection + " && localReco_pt>25 && abs(localReco_eta)>1.5 && (localReco_iGen<0||abs(gen_parentId[localReco_iGen])!=11)"
-    trueDef = "localReco_iGen>=0 && gen_id[localReco_iGen] == 22 && gen_isPromptFinalState[localReco_iGen]"
+    trainingCut = preselection + " && gedReco_pt>25 && abs(gedReco_eta)>1.5 && (gedReco_iGen<0||abs(gen_parentId[gedReco_iGen])!=11)"
+    trueDef = "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_isPromptFinalState[gedReco_iGen]"
     trueCut = trainingCut + " && (%s)" % trueDef
     bkgCut = trainingCut + " && !(%s)" % trueDef
     _def_varmap = [
-        Variable("pt", "localReco_pt", train=False),
-        Variable("abseta", "abs(localReco_eta)", train=False),
+        Variable("pt", "gedReco_pt", train=False),
+        Variable("abseta", "abs(gedReco_eta)", train=False),
         Variable("isTrained", trainingCut, train=False),
         Variable("isTrue", trueCut, train=False),
     ]
@@ -110,10 +110,10 @@ class EndcapIDConfigRun2(EndcapIDConfig):
 
 
 allInputFiles = [
-    "/data/ncsmith/932phoID_round3/GJets2.root",
-    "/data/ncsmith/932phoID_round3/DiPhotonSherpa.root",
-    "/data/ncsmith/932phoID_round3/QCD.root",
-    "/data/ncsmith/932phoID_round3/DY2J.root",
+    "/data/ncsmith/932phoID_round4/GJets.root",
+    "/data/ncsmith/932phoID_round4/DiPhotonSherpa.root",
+    "/data/ncsmith/932phoID_round4/QCD.root",
+    "/data/ncsmith/932phoID_round4/DY2J.root",
 ]
 allInputFilesPU0 = [
     "/data/ncsmith/932phoID_round3/GJetspu0.root",
@@ -214,5 +214,26 @@ idconfigs = [
         ],
         "BoostType=Grad:Shrinkage=0.4:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=3000:MaxDepth=2:nCuts=200",
         allInputFilesPU0
+    ),
+    BarrelIDConfig("barrelV5",
+        [
+            Variable("full5x5_sigmaIetaIeta", "gedReco_full5x5_sigmaIetaIeta"),
+            Variable("full5x5_sigmaIetaIphi", "gedReco_full5x5_sigmaIetaIphi"),
+            Variable("full5x5_sigmaIphiIphi", "gedReco_full5x5_sigmaIphiIphi"),
+            Variable("etaWidth", "gedReco_etaWidth"),
+            Variable("phiWidth", "gedReco_phiWidth"),
+            Variable("full5x5_r9", "gedReco_full5x5_r9"),
+            Variable("full5x5_s4", "gedReco_full5x5_s4"),
+            Variable("hadronicOverEm", "gedReco_hadronicOverEm"),
+            Variable("chargedHadronIso", "gedReco_chargedHadronIso"),
+            Variable("neutralHadronIso", "gedReco_neutralHadronIso"),
+            Variable("photonIso", "gedReco_photonIso"),
+            Variable("scRawEnergy", "gedReco_scRawEnergy"),
+            Variable("scAbsEta", "abs(gedReco_scEta)"),
+            Variable("trkSumPt", "gedReco_trkSumPtSolidConeDR04"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.4:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=2:nCuts=200",
+        allInputFiles[:3]
     ),
 ]
