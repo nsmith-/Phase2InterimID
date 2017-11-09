@@ -53,7 +53,7 @@ def makeEff(trees, histDef, ncut, dcut):
     hEff = ROOT.TEfficiency(htmpnum, htmpdenom)
     return hEff
 
-filenames = ["/data/ncsmith/932phoID_round2/GJets13TeV.root"]
+filenames = ["/data/ncsmith/932phoID_round4/GJets13TeV.root"]
 files = map(ROOT.TFile.Open, filenames)
 trees = [f.Get("ntupler/photons") for f in files]
 
@@ -77,13 +77,31 @@ run2WPs_barrel = [
     'gedReco_conversionSafeElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.00994 && gedReco_hadronicOverEm < 0.0269 && ({chgIso}) < 0.202 && ({neuIso}) <  0.264+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 2.362+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
 ]
 run2WPs_endcap = [
-    'gedReco_hasPixelSeed && gedReco_full5x5_sigmaIetaIeta < 0.03013 && gedReco_hadronicOverEm < 0.0481 && ({chgIso}) < 1.011 && ({neuIso}) <  5.931+0.0163*gedReco_pt+0.000014*gedReco_pt^2 && ({phoIso}) < 6.641+0.0034*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
-    'gedReco_hasPixelSeed && gedReco_full5x5_sigmaIetaIeta < 0.03001 && gedReco_hadronicOverEm < 0.0219 && ({chgIso}) < 0.442 && ({neuIso}) <  1.715+0.0163*gedReco_pt+0.000014*gedReco_pt^2 && ({phoIso}) < 3.863+0.0034*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
-    'gedReco_hasPixelSeed && gedReco_full5x5_sigmaIetaIeta < 0.03000 && gedReco_hadronicOverEm < 0.0213 && ({chgIso}) < 0.034 && ({neuIso}) <  0.586+0.0163*gedReco_pt+0.000014*gedReco_pt^2 && ({phoIso}) < 2.617+0.0034*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
+    'gedReco_full5x5_sigmaIetaIeta < 0.03013 && gedReco_hadronicOverEm < 0.0481 && ({chgIso}) < 1.011 && ({neuIso}) <  5.931+0.0163*gedReco_pt+0.000014*gedReco_pt^2 && ({phoIso}) < 6.641+0.0034*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
+    'gedReco_full5x5_sigmaIetaIeta < 0.03001 && gedReco_hadronicOverEm < 0.0219 && ({chgIso}) < 0.442 && ({neuIso}) <  1.715+0.0163*gedReco_pt+0.000014*gedReco_pt^2 && ({phoIso}) < 3.863+0.0034*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
+    'gedReco_full5x5_sigmaIetaIeta < 0.03000 && gedReco_hadronicOverEm < 0.0213 && ({chgIso}) < 0.034 && ({neuIso}) <  0.586+0.0163*gedReco_pt+0.000014*gedReco_pt^2 && ({phoIso}) < 2.617+0.0034*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
 ]
-run2WPs_endcap = [wp.replace("gedReco_", "localReco_") for wp in run2WPs_endcap]
 
 fout = ROOT.TFile.Open("plots_cuts.root", "recreate")
+
+# medium to eveto
+ptbinning = array.array('d', [10., 20., 30., 40., 50., 60., 70., 80., 90., 100., 120., 140., 160., 180., 200., 250., 300., 350., 400., 450., 500.])
+effpt_def = ROOT.TH1D("effpt_def", "gedReco_pt;p_{T}^{#gamma} [GeV];Efficiency", len(ptbinning)-1, ptbinning)
+denom_pt = "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_isPromptFinalState[gedReco_iGen] && abs(gen_parentId[gedReco_iGen])!=11"
+
+eff = makeEff(trees[0:1], effpt_def, "!gedReco_hasPixelSeed", denom_pt+"&& abs(gedReco_scEta)<1.4 &&"+run2WPs_barrel[1])
+eff.SetNameTitle("effPt_pixSeed_barrel", "Barrel")
+eff.Write()
+eff2 = makeEff(trees[0:1], effpt_def, "!gedReco_hasPixelSeed", denom_pt+"&& abs(gedReco_scEta)>1.5 &&"+run2WPs_endcap[1])
+eff2.SetNameTitle("effPt_pixSeed_endcap", "Endcap")
+eff2.Write()
+eff3 = makeEff(trees[0:1], effpt_def, "gedReco_conversionSafeElectronVeto", denom_pt+"&& abs(gedReco_scEta)<1.4 &&"+run2WPs_barrel[1])
+eff3.SetNameTitle("effPt_eVeto_barrel", "Barrel")
+eff3.Write()
+eff4 = makeEff(trees[0:1], effpt_def, "gedReco_conversionSafeElectronVeto", denom_pt+"&& abs(gedReco_scEta)>1.5 &&"+run2WPs_endcap[1])
+eff4.SetNameTitle("effPt_eVeto_endcap", "Endcap")
+eff4.Write()
+
 
 # ROC curves
 rocBarrel = makeROC(trees[0:1], run2WPs_barrel, bdtCommon.BarrelIDConfig.trueCut, bdtCommon.BarrelIDConfig.bkgCut)

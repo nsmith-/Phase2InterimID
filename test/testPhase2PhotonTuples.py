@@ -39,8 +39,8 @@ if options.phase2:
 
 process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     photons = phoSrc,
-    localRecoCut = cms.string("pt>10 && !isEB"),
-    gedRecoCut = cms.string("pt>10 && isEB"),
+    localRecoCut = cms.string("pt>10 && !isEB" if options.phase2 else "0."),
+    gedRecoCut = cms.string("pt>10 && isEB" if options.phase2 else "pt>10"),
     gedPhotons = cms.InputTag("gedPhotons"),
     genParticles = cms.InputTag("genParticles"),
     genCut = cms.string("pt>5 && status==1 && (abs(pdgId)==11 || pdgId==22)"),
@@ -67,6 +67,7 @@ common = cms.PSet(
     scEnergy = cms.string("superCluster().energy()"),
     scRawEnergy = cms.string("superCluster().rawEnergy()"),
     seedOrigEnergy = cms.string("superCluster().seed().energy()"),
+    seedEta = cms.string("superCluster().seed().eta()"),
     hasPixelSeed = cms.string("hasPixelSeed()"),
 )
 
@@ -93,10 +94,10 @@ process.ntupler.gedRecoMisc = cms.PSet(
     photonIso = cms.string("photonIso()"),
     trkSumPtSolidConeDR04 = cms.string("trkSumPtSolidConeDR04()"),
     nTrkSolidConeDR04 = cms.string("nTrkSolidConeDR04()"),
-    mvaValue = cms.InputTag("hgcPhotonMVAbarrel"),
 )
 
 if options.phase2:
+    process.ntupler.gedRecoMisc.mvaValue = cms.InputTag("hgcPhotonMVAbarrel")
     process.ntupler.localRecoMisc = cms.PSet(
         common,
         seed_det = cms.string("superCluster().seed().hitsAndFractions().at(0).first.det()"),

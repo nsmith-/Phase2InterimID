@@ -3,3 +3,4 @@
 python/__init__.py
 test/crab_*
 test/default
+test/resolutions

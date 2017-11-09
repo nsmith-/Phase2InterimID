@@ -1,7 +1,7 @@
 from CRABClient.UserUtilities import config, getUsernameFromSiteDB
 config = config()
 
-config.General.workArea = 'crab_phase2photons_round3'
+config.General.workArea = 'crab_phase2photons_round4'
 config.General.transferOutputs = True
 config.General.transferLogs = True
 
@@ -13,10 +13,9 @@ config.Data.splitting = 'FileBased'
 #config.General.instance = 'preprod'
 
 config.Data.inputDBS = 'global'
-config.Data.outLFNDirBase = '/store/user/%s/932phoID_round2' % (getUsernameFromSiteDB())
+config.Data.outLFNDirBase = '/store/user/%s/932phoID_round4' % (getUsernameFromSiteDB())
 config.Data.publication = False
 config.Data.allowNonValidInputDataset = True
-# config.Data.totalUnits = 20
 
 #config.Site.storageSite = 'T2_US_Wisconsin'
 config.Site.storageSite = 'T2_CH_CERN'
@@ -50,10 +49,11 @@ pds_run2 = [
 ]
 
 pds = pds_photon
-# run2, photon = 50, photonpu0 = 10
-config.Data.unitsPerJob = 50
+# run2 = 50, photon = 30, photonpu0 = 10
+config.Data.unitsPerJob = 30
 #config.JobType.pyCfgParams = ["phase2=0"]
 config.JobType.numCores = 4
+# config.Data.totalUnits = 20*50
 
 if __name__ == '__main__':
     from CRABAPI.RawCommand import crabCommand
