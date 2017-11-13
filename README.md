@@ -53,8 +53,8 @@ process.ntupler = cms.EDAnalyzer("MyTuples",
 ```
 It is suggested to save the MVA value and cut later.  See below for working points.
 
-Running on PAT objects
-----------------------
+Running on MiniAOD tier
+-----------------------
 No endcap EGamma collections exist in MiniAOD yet.  See [here](https://github.com/cms-sw/cmssw/pull/21037) for status.
 However, one can always run with `secondaryInputFiles` to access the RECO collections.  In CRAB, there is a simple `useParent` option.
 
@@ -83,3 +83,11 @@ Current MVA is `V4`, pass `>=` value.
  | barrelV4 |   0.00   |   0.56   |
  | endcapV4 |   0.20   |   0.68   |
 
+Recommended Kinematics
+----------------------
+For barrel photons, the best performing energy is found using an algorithm developed at the time of the barrel TDR, which adds the energy of the top 15 most energetic crystals in the supercluster.  This improves the pileup resistance of the whole sum, while still maintaining a reasonable shower containment.
+An example implementation can be found [here](https://github.com/nsmith-/Phase2InterimID/blob/integrated/plugins/Phase2PhotonTupler.cc#L451-L490).
+The supercluster position `superCluster()->position()` seems to work in a satisfactory way for barrel photons.
+
+For endcap photons, the best performing energy variable (so far) is the seed multicluster energy, `photon.superCluster()->seed()->energy()`.
+In the endcap, the seed cluster position `superCluster()->seed->position()` is probably the best choice for now to compute the momentum vector, after choosing the appropriate vertex.
