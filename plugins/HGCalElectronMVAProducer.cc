@@ -217,12 +217,12 @@ HGCalElectronMVAProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
       tmva_ele_hgc_sigmas1 = (goodEle) ?  externalvar("pcaSig1") : -1. ;
       tmva_ele_hgc_sigmas2 = (goodEle) ?  externalvar("pcaSig2") : -1. ;
       tmva_ele_hgc_sigmas3 = (goodEle) ?  externalvar("pcaSig3") : -1. ;
-      tmva_ele_hgc_pcaAxisX = (goodEle) ?  externalvar("pcaSig1") : -1.;
-      tmva_ele_hgc_pcaAxisY = (goodEle) ?  externalvar("pcaSig2") : -1.;
-      tmva_ele_hgc_pcaAxisZ = (goodEle) ?  externalvar("pcaSig3") : -1.;
-      tmva_ele_hgc_pcaPosX = (goodEle) ?  externalvar("pcaSig1") : -1.;
-      tmva_ele_hgc_pcaPosY = (goodEle) ?  externalvar("pcaSig2") : -1.;
-      tmva_ele_hgc_pcaPosZ = (goodEle) ?  externalvar("pcaSig3") : -1.;
+      tmva_ele_hgc_pcaAxisX = (goodEle) ?  externalvar("pcaAxisX") : -1.;
+      tmva_ele_hgc_pcaAxisY = (goodEle) ?  externalvar("pcaAxisY") : -1.;
+      tmva_ele_hgc_pcaAxisZ = (goodEle) ?  externalvar("pcaAxisZ") : -1.;
+      tmva_ele_hgc_pcaPosX = (goodEle) ?  externalvar("pcaPositionX") : -1.;
+      tmva_ele_hgc_pcaPosY = (goodEle) ?  externalvar("pcaPositionY") : -1.;
+      tmva_ele_hgc_pcaPosZ = (goodEle) ?  externalvar("pcaPositionZ") : -1.;
 
       // transverse shapes
       tmva_ele_sigmauu = externalvar("sigmaUU");

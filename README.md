@@ -9,7 +9,7 @@ cmsrel CMSSW_9_3_2
 cd CMSSW_9_3_2/src
 cmsenv
 git cms-init
-git cms-merge-topic -u nsmith-:EgammaFromMultiCl_932
+git cms-merge-topic -u nsmith-:EgammaFromMultiCl_932v2
 mkdir -p RecoEgamma && pushd RecoEgamma
 git clone -b integrated git@github.com:nsmith-/Phase2InterimID.git
 popd
@@ -30,17 +30,9 @@ In `RECO`, the electrons and photons are split into two collections for barrel a
 If you want to use RECO objects, you will have to load the two separate collections into your analysis.  If you prefer to use PAT objects, see below.
 All electron and photon ID MVA input variables are either part of the `reco::` object or available by running the following ValueMap producers.
 ```python
-from RecoEgamma.EgammaTools.hgcalElectronIDValueMap_cfi import hgcalElectronIDValueMap
-from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import hgcalPhotonIDValueMap
-# TODO: electron
-from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
-
-# Make sure all of these are in path or task
-process.hgcElectronID = hgcalElectronIDValueMap.clone()
-process.hgcPhotonID = hgcalPhotonIDValueMap.clone()
-# TODO: electron
-process.hgcPhotonMVAbarrel = hgcalPhotonMVA.clone(photons=cms.InputTag("gedPhotons"))
-process.hgcPhotonMVAendcap = hgcalPhotonMVA.clone()
+process.load("RecoEgamma.Phase2InterimID.phase2EgammaRECO_cff")
+# The phase2Egamma sequence won't work in scheduled mode
+process.options.allowUnscheduled = cms.untracked.bool(True)
 
 # e.g. 
 process.ntupler = cms.EDAnalyzer("MyTuples",
@@ -48,8 +40,8 @@ process.ntupler = cms.EDAnalyzer("MyTuples",
     barrelPhoMva  = cms.InputTag("hgcPhotonMVAbarrel"),
     endcapPhotons = cms.InputTag("photonsFromMultiCl"),
     endcapPhoMva  = cms.InputTag("hgcPhotonMVAendcap"),
-    ...
 )
+process.p = cms.Path( process.phase2Egamma + process.ntupler )
 ```
 It is suggested to save the MVA value and cut later.  See below for working points.
 
@@ -67,7 +59,7 @@ process.options.allowUnscheduled = cms.untracked.bool(True)
 
 # e.g.
 process.ntupler.patPhotonsSrc = cms.InputTag("phase2Photons")
-# TODO: electron
+process.ntupler.patElectronsSrc = cms.InputTag("phase2Electrons")
 process.p = cms.Path( process.phase2Egamma + process.ntupler )
 ```
 See `test/testPhase2EgammaCollections.py` for a more complete example.

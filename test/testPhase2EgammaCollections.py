@@ -9,6 +9,7 @@ options.parseArguments()
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load('Configuration.Geometry.GeometryExtended2023D17Reco_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
+process.load('Configuration.StandardSequences.MagneticField_cff')
 
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, '93X_upgrade2023_realistic_v2', '')
@@ -33,7 +34,7 @@ process.out = cms.OutputModule("PoolOutputModule",
     fileName = cms.untracked.string('file:miniaod.root'),
     outputCommands = cms.untracked.vstring(
         "keep *_phase2Photons_*_*",
-        "keep *_hgcElectron*_*_*",
+        "keep *_phase2Electrons_*_*",
     ),
 )
 process.outstep = cms.EndPath(process.out)

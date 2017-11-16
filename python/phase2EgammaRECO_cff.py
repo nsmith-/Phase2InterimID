@@ -1,7 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
-from RecoEgamma.EgammaTools.hgcalElectronIDValueMap_cfi import hgcalElectronIDValueMap
-from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import hgcalPhotonIDValueMap
+from RecoEgamma.EgammaTools.hgcalElectronIDValueMap_cff import hgcalElectronIDValueMap
+from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cff import hgcalPhotonIDValueMap
 from RecoEgamma.Phase2InterimID.hgcalElectronMVAProducer_cfi import hgcalElectronMVA
 from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
 
@@ -9,9 +9,9 @@ from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
 hgcElectronID = hgcalElectronIDValueMap.clone()
 hgcPhotonID = hgcalPhotonIDValueMap.clone()
 hgcElectronMVAbarrel = hgcalElectronMVA.clone(electrons=cms.InputTag("gedGsfElectrons"))
-hgcElectronMVAendcap = hgcalElectronMVA.clone(electrons=cms.InputTag("ecalDrivenGsfElectronsFromMultiCl"))
+hgcElectronMVAendcap = hgcalElectronMVA.clone(electrons=cms.InputTag("cleanedEcalDrivenGsfElectronsFromMultiCl"))
 hgcPhotonMVAbarrel = hgcalPhotonMVA.clone(photons=cms.InputTag("gedPhotons"))
-hgcPhotonMVAendcap = hgcalPhotonMVA.clone()
+hgcPhotonMVAendcap = hgcalPhotonMVA.clone(photons=cms.InputTag("photonsFromMultiCl"))
 
 phase2EgammaTask = cms.Task(
     hgcElectronID,

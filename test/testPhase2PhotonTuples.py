@@ -56,7 +56,7 @@ if options.phase2:
         phoSrc = cms.InputTag("recoveredPhotons")
         eleSrcForCleaning = cms.InputTag("ecalDrivenGsfElectrons")
 
-    from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import hgcalPhotonIDValueMap
+    from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cff import hgcalPhotonIDValueMap
     process.hgcPhotonID = hgcalPhotonIDValueMap.clone(photons=phoSrc)
     process.p += process.hgcPhotonID
     from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA

@@ -45,7 +45,7 @@ Phase2PhotonMerger::Phase2PhotonMerger(const edm::ParameterSet& iConfig):
   barrelIDToken_(consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("barrelID"))),
   barrelCut_(iConfig.getParameter<std::string>("barrelCut")),
   endcapPhotonToken_(consumes<pat::PhotonCollection>(iConfig.getParameter<edm::InputTag>("endcapPhotons"))),
-  // endcapIDToken_(consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("endcapID"))),
+  endcapIDToken_(consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("endcapID"))),
   endcapCut_(iConfig.getParameter<std::string>("endcapCut"))
 {
   produces<pat::PhotonCollection>();
@@ -70,10 +70,10 @@ Phase2PhotonMerger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   Handle<pat::PhotonCollection> endcapPhotonHandle;
   iEvent.getByToken(endcapPhotonToken_, endcapPhotonHandle);
-  // const auto endcapInputId = endcapPhotonHandle.id();
+  const auto endcapInputId = endcapPhotonHandle.id();
 
-  // Handle<ValueMap<float>> endcapIDHandle;
-  // iEvent.getByToken(endcapIDToken_, endcapIDHandle);
+  Handle<ValueMap<float>> endcapIDHandle;
+  iEvent.getByToken(endcapIDToken_, endcapIDHandle);
 
   std::unique_ptr<pat::PhotonCollection> photons(new pat::PhotonCollection());
 
@@ -84,9 +84,8 @@ Phase2PhotonMerger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
   }
   for(size_t iPho=0; iPho<endcapPhotonHandle->size(); ++iPho) {
     pat::Photon phoNew(endcapPhotonHandle->at(iPho));
-    // phoNew.addUserFloat("mvaValue", endcapIDHandle->get(endcapInputId , iPho));
     // Common access method
-    phoNew.addUserFloat("mvaValue", phoNew.userFloat("hgcPhotonMVAendcap"));
+    phoNew.addUserFloat("mvaValue", endcapIDHandle->get(endcapInputId , iPho));
     if ( endcapCut_(phoNew) ) photons->push_back(phoNew);
   }
 
