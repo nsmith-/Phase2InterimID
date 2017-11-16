@@ -2,7 +2,9 @@ import FWCore.ParameterSet.Config as cms
 
 from RecoEgamma.EgammaTools.slimmedEgammaFromMultiCl_cff import *
 
-# TODO: electron
+from RecoEgamma.Phase2InterimID.hgcalElectronMVAProducer_cfi import hgcalElectronMVA
+hgcElectronMVAbarrel = hgcalElectronMVA.clone(electrons=cms.InputTag("slimmedElectrons"), usePAT=True)
+hgcElectronMVAendcap = hgcalElectronMVA.clone(electrons=cms.InputTag("ecalDrivenGsfElectronsFromMultiCl"), usePAT=False)
 from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
 hgcPhotonMVAbarrel = hgcalPhotonMVA.clone(photons=cms.InputTag("slimmedPhotons"), usePAT=True)
 hgcPhotonMVAendcap = hgcalPhotonMVA.clone()
@@ -19,6 +21,8 @@ phase2Photons = cms.EDProducer("Phase2PhotonMerger",
 
 phase2EgammaTask = cms.Task(
     slimmedEgammaFromMultiClTask,
+    hgcElectronMVAbarrel,
+    hgcElectronMVAendcap,
     hgcPhotonMVAbarrel,
     hgcPhotonMVAendcap,
     phase2Photons

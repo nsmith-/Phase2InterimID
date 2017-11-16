@@ -18,7 +18,7 @@ process.options = cms.untracked.PSet(
     allowUnscheduled = cms.untracked.bool(True),
 )
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 100
+process.MessageLogger.cerr.FwkReport.reportEvery = 10
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(options.maxEvents) )
 process.source = cms.Source ("PoolSource",
     fileNames = cms.untracked.vstring("/store/mc/PhaseIITDRFall17MiniAOD/DiPhotonJetsBox_MGG-80toInf_14TeV-Sherpa/MINIAODSIM/PU200_93X_upgrade2023_realistic_v2-v1/150000/E01EFC0F-13B7-E711-A90B-FA163E4C681C.root"),
@@ -33,6 +33,7 @@ process.out = cms.OutputModule("PoolOutputModule",
     fileName = cms.untracked.string('file:miniaod.root'),
     outputCommands = cms.untracked.vstring(
         "keep *_phase2Photons_*_*",
+        "keep *_hgcElectron*_*_*",
     ),
 )
 process.outstep = cms.EndPath(process.out)
