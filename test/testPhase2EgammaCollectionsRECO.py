@@ -21,19 +21,22 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkReport.reportEvery = 10
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(options.maxEvents) )
 process.source = cms.Source ("PoolSource",
-    fileNames = cms.untracked.vstring("/store/mc/PhaseIITDRFall17MiniAOD/DiPhotonJetsBox_MGG-80toInf_14TeV-Sherpa/MINIAODSIM/PU200_93X_upgrade2023_realistic_v2-v1/150000/E01EFC0F-13B7-E711-A90B-FA163E4C681C.root"),
-    secondaryFileNames = cms.untracked.vstring("/store/mc/PhaseIITDRFall17DR/DiPhotonJetsBox_MGG-80toInf_14TeV-Sherpa/GEN-SIM-RECO/PU200_93X_upgrade2023_realistic_v2-v1/150000/24BB7BB2-A9B4-E711-9DC9-FA163E7FFB3C.root"),
+    fileNames  = cms.untracked.vstring("/store/mc/PhaseIITDRFall17DR/DiPhotonJetsBox_MGG-80toInf_14TeV-Sherpa/GEN-SIM-RECO/PU200_93X_upgrade2023_realistic_v2-v1/150000/24BB7BB2-A9B4-E711-9DC9-FA163E7FFB3C.root"),
 )
 
-process.load("RecoEgamma.Phase2InterimID.phase2EgammaPAT_cff")
+process.load("RecoEgamma.Phase2InterimID.phase2EgammaRECO_cff")
 process.p = cms.Path( process.phase2Egamma )
 
 process.out = cms.OutputModule("PoolOutputModule",
     compressionAlgorithm = cms.untracked.string('LZMA'),
-    fileName = cms.untracked.string('file:miniaod.root'),
+    fileName = cms.untracked.string('file:reco.root'),
     outputCommands = cms.untracked.vstring(
-        "keep *_phase2Photons_*_*",
-        "keep *_phase2Electrons_*_*",
+        "keep *_hgcElectron*_*_*",
+        "keep *_hgcPhoton*_*_*",
+        "keep *_gedGsfElectrons_*_*",
+        "keep *_cleanedEcalDrivenGsfElectronsFromMultiCl_*_*",
+        "keep *_gedPhotons_*_*",
+        "keep *_photonsFromMultiCl_*_*",
     ),
 )
 process.outstep = cms.EndPath(process.out)

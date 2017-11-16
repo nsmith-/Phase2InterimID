@@ -40,5 +40,4 @@ phase2EgammaTask = cms.Task(
     phase2Photons
 )
 
-# Caution: won't work in scheduled mode!
 phase2Egamma = cms.Sequence(phase2EgammaTask)
