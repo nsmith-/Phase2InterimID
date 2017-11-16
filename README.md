@@ -1,6 +1,6 @@
 Phase 2 Interim EGamma ID
 =========================
-This package has been used to develop photon IDs for the phase 2 HGCal TDR, and now also serves as a recipe and helper code repository.
+This package has been used to develop photon IDs for the phase 2 HGCal TDR, and now also serves as a recipe and helper code repository for both electrons and photons.
 
 Recipe
 ------
@@ -9,7 +9,7 @@ cmsrel CMSSW_9_3_2
 cd CMSSW_9_3_2/src
 cmsenv
 git cms-init
-git cms-merge-topic -u nsmith-:EgammaFromMultiCl_932
+git cms-merge-topic -u nsmith-:EgammaFromMultiCl_932v2
 mkdir -p RecoEgamma && pushd RecoEgamma
 git clone -b integrated git@github.com:nsmith-/Phase2InterimID.git
 popd
@@ -27,30 +27,26 @@ In `RECO`, the electrons and photons are split into two collections for barrel a
  | `reco::PhotonCollection`      | `gedPhotons`                        | Barrel photons from the particle-flow global event description                             |
  | `reco::PhotonCollection`      | `photonsFromMultiCl`                | Endcap photons using local 'island cluster' reconstruction, seeded by HGCal multiclusters  |
 
-If you want to use RECO objects, you will have to load the two separate collections into your analysis.  If you prefer to use PAT objects, see below.
-All electron and photon ID MVA input variables are either part of the `reco::` object or available by running the following ValueMap producers.
+If you want to use RECO objects, you will have to load the two separate collections into your analysis.  If you prefer to use PAT objects, you can use a combined collection, see below.
+All electron and photon ID MVA input variables are either part of the `reco::` object or available by ValueMap producers.
+A `cff` has been made that runs all the relevant producers, and can be imported as follows:
 ```python
-from RecoEgamma.EgammaTools.hgcalElectronIDValueMap_cfi import hgcalElectronIDValueMap
-from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import hgcalPhotonIDValueMap
-# TODO: electron
-from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
-
-# Make sure all of these are in path or task
-process.hgcElectronID = hgcalElectronIDValueMap.clone()
-process.hgcPhotonID = hgcalPhotonIDValueMap.clone()
-# TODO: electron
-process.hgcPhotonMVAbarrel = hgcalPhotonMVA.clone(photons=cms.InputTag("gedPhotons"))
-process.hgcPhotonMVAendcap = hgcalPhotonMVA.clone()
+process.load("RecoEgamma.Phase2InterimID.phase2EgammaRECO_cff")
 
 # e.g. 
 process.ntupler = cms.EDAnalyzer("MyTuples",
+    barrelElectrons = cms.InputTag("gedGsfElectrons"),
+    barrelElectronMVA  = cms.InputTag("hgcElectronMVAbarrel"),
+    endcapElectrons = cms.InputTag("cleanedEcalDrivenGsfElectronsFromMultiCl"),
+    endcapElectronMVA  = cms.InputTag("hgcElectronMVAendcap"),
     barrelPhotons = cms.InputTag("gedPhotons"),
-    barrelPhoMva  = cms.InputTag("hgcPhotonMVAbarrel"),
+    barrelPhoMVA  = cms.InputTag("hgcPhotonMVAbarrel"),
     endcapPhotons = cms.InputTag("photonsFromMultiCl"),
-    endcapPhoMva  = cms.InputTag("hgcPhotonMVAendcap"),
-    ...
+    endcapPhoMVA  = cms.InputTag("hgcPhotonMVAendcap"),
 )
+process.p = cms.Path( process.phase2Egamma + process.ntupler )
 ```
+See `test/testPhase2EgammaCollectionsRECO.py` for a more complete example.
 It is suggested to save the MVA value and cut later.  See below for working points.
 
 Running on MiniAOD tier
@@ -58,24 +54,27 @@ Running on MiniAOD tier
 No endcap EGamma collections exist in MiniAOD yet.  See [here](https://github.com/cms-sw/cmssw/pull/21037) for status.
 However, one can always run with `secondaryInputFiles` to access the RECO collections.  In CRAB, there is a simple `useParent` option.
 
-To aid in this, a `cff` has been made that forms the endcap PAT collections, runs ID on both barrel and endcap photons, and produces a merged collection with embedded MVA values.
+To aid in this, a `cff` has been made that forms the endcap PAT collections, runs ID on barrel and endcap collections, and 
+produces merged collections of electrons and photons with embedded MVA values.
 It can be imported as follows:
 ```python
 process.load("RecoEgamma.Phase2InterimID.phase2EgammaPAT_cff")
-# The phase2Egamma sequence won't work in scheduled mode
-process.options.allowUnscheduled = cms.untracked.bool(True)
 
 # e.g.
 process.ntupler.patPhotonsSrc = cms.InputTag("phase2Photons")
-# TODO: electron
+process.ntupler.patElectronsSrc = cms.InputTag("phase2Electrons")
 process.p = cms.Path( process.phase2Egamma + process.ntupler )
 ```
 See `test/testPhase2EgammaCollections.py` for a more complete example.
-The ID value is accessible as `userFloat("mvaValue")`.  Use `isEB()` to decide whether the photon is from HGCal multiclusters or standard barrel GED.
+The ID value is accessible as `userFloat("mvaValue")`.  Use `isEB()` to decide whether the object is from HGCal multiclusters or standard barrel GED.
 It is suggested to save the MVA value and cut later.  See below for working points.
 
 Cut working points
 ------------------
+# Electrons
+See https://github.com/CMS-HGCAL/EgammaTools/blob/master/ELECTRONBDT.md#recommended-id-cuts
+
+# Photons
 Current MVA is `V4`, pass `>=` value.
 
  | MVA name | Loose WP | Tight WP |

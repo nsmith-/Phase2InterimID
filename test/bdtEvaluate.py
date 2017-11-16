@@ -61,7 +61,7 @@ def makeEff(trees, histDef, ncut, dcut):
 
 def effectiveSigma(hres, debug=None):
     if hres.GetEffectiveEntries() == 0. or hres.Integral() == 0.:
-        return (0., 1.)
+        return (-1., 0.)
     quantiles = array.array('d', [0., 0.68])
     qvals = array.array('d', [0., 0.])
     npts = hres.GetNbinsX()
@@ -119,7 +119,7 @@ def resolutionPlot(trees, name, eoetrue, cut, ptbinning, debugName):
         eyh[i] = effSigErr
     gSigma = ROOT.TGraphAsymmErrors(len(x), x, y, exl, exh, eyl, eyh)
     gSigma.SetNameTitle(name, name)
-    gSigma.GetXaxis().SetTitle("Generated photon p_{T} (GeV)")
+    gSigma.GetXaxis().SetTitle("Generated photon energy (GeV)")
     gSigma.GetYaxis().SetTitle("Energy resolution, #sigma_{eff}(E)/E")
     gSigma.SetMarkerSize(0.8)
     return gSigma
@@ -150,6 +150,13 @@ rocGJets.Write()
 rocGJetsRej = makeROC(trees[0:1], idConfig, idConfig.trueCut, idConfig.bkgCut, False)
 rocGJetsRej.SetNameTitle("gjetsROCrej", idConfig.name)
 rocGJetsRej.Write()
+hiptcut = "&&localReco_pt>50." if isinstance(idConfig, bdtCommon.EndcapIDConfig) else "&&gedReco_pt>50."
+rocGJetsHighPt = makeROC(trees[0:1], idConfig, idConfig.trueCut+hiptcut, idConfig.bkgCut+hiptcut)
+rocGJetsHighPt.SetNameTitle("gjetsHiPtROC", idConfig.name)
+rocGJetsHighPt.Write()
+rocGJetsHighPtRej = makeROC(trees[0:1], idConfig, idConfig.trueCut+hiptcut, idConfig.bkgCut+hiptcut, False)
+rocGJetsHighPtRej.SetNameTitle("gjetsHiPtROCrej", idConfig.name)
+rocGJetsHighPtRej.Write()
 rocGJetsNoPre = makeROC(trees[0:1], idConfig, idConfig.trueCut.replace(idConfig.preselection+" && ", ""), idConfig.bkgCut.replace(idConfig.preselection+" && ", ""))
 rocGJetsNoPre.SetNameTitle("gjetsROC_nopre", idConfig.name)
 rocGJetsNoPre.Write()
@@ -176,6 +183,7 @@ if True:
         "promptConvPho": "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_isPromptFinalState[gedReco_iGen] && abs(gen_parentId[gedReco_iGen]) != 11 && (abs(gen_conversionZ[gedReco_iGen])<290 && gen_conversionRho[gedReco_iGen]<120)",
         "promptPhoEleMom": "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_isPromptFinalState[gedReco_iGen] && abs(gen_parentId[gedReco_iGen]) == 11",
         "nonpromptPho": "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && !gen_isPromptFinalState[gedReco_iGen]",
+        "phoPiZero": "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_parentId[gedReco_iGen]==111",
         "ele": "gedReco_iGen>=0 && abs(gen_id[gedReco_iGen]) == 11",
         "fake": "gedReco_iGen<0",
     }
@@ -209,7 +217,7 @@ wp95.Write()
 
 
 # Gen to x efficiencies
-ptbinning = array.array('d', [10., 20., 30., 40., 50., 60., 70., 80., 90., 100., 120., 140., 160., 180., 200., 250., 300., 350., 400., 450., 500.])
+ptbinning = array.array('d', [10., 20., 30., 40., 50., 60., 70., 80., 90., 100., 120., 140., 160., 180., 200., 250., 300., 350., 400., 450., 500., 750., 1000.])
 effpt_def = ROOT.TH1D("effpt_def", "gen_pt;Generated p_{T}^{#gamma} [GeV];Efficiency", len(ptbinning)-1, ptbinning)
 effeta_def = ROOT.TH1D("effeta_def", "abs(gen_eta);Generated |#eta^{#gamma}|;Efficiency", 32, 0, 3.2)
 denom_pt = "gen_id == 22 && gen_isPromptFinalState && abs(gen_parentId)!=11"
@@ -243,26 +251,56 @@ for name, cut in efficiencies.iteritems():
     # eff3.Write()
 
 
+# Bkg efficiencies
+reco = "localReco" if isinstance(idConfig, bdtCommon.EndcapIDConfig) else "gedReco"
+bkgeffpt_def = ROOT.TH1D("bkgeffpt_def", "%s_pt;p_{T}^{#gamma} [GeV];Efficiency" % reco, len(ptbinning)-1, ptbinning)
+bkgeffeta_def = ROOT.TH1D("bkgeffeta_def", "abs(%s_eta);|#eta^{#gamma}|;Efficiency" % reco, 32, 0, 3.2)
+denom_pt = "!(%s)" % idConfig.trueDef
+denom_eta = "!(%s)" % idConfig.trueDef
+if isinstance(idConfig, bdtCommon.EndcapIDConfig):
+    denom_pt += " && abs(localReco_scEta)>1.6 && abs(localReco_scEta)<2.9"
+    denom_eta += " && localReco_pt>30."
+else:
+    denom_pt += " && abs(gedReco_scEta)<1.4"
+    denom_eta += " && gedReco_pt>30."
+efficiencies = {
+    "idmva85": "%s && %s > %f" % (pre, idConfig.name, wp85.GetVal()),
+    "idmva95": "%s && %s > %f" % (pre, idConfig.name, wp95.GetVal()),
+}
+for name, cut in efficiencies.iteritems():
+    if isinstance(idConfig, bdtCommon.EndcapIDConfig):
+        cut = cut.replace("gedReco", "localReco")
+        cut = cut.replace("GedReco", "LocalReco")
+    eff = makeEff(trees[0:3], bkgeffpt_def, cut, denom_pt)
+    eff.SetNameTitle("bkgEffPt_%s" % name, name)
+    eff.Write()
+    eff2 = makeEff(trees[0:3], bkgeffeta_def, cut, denom_eta)
+    eff2.SetNameTitle("bkgEffEta_%s" % name, name)
+    eff2.Write()
+
+
 # Resolution
+ebinning = array.array('d', [10., 20., 30., 40., 50., 60., 70., 80., 90., 100., 120., 140., 160., 180., 200., 240., 280., 320., 360., 400., 450., 500., 550., 600., 700., 800., 900., 1000., 1200., 1400., 1600., 1800., 2000., 2500., 3000.])
 if isinstance(idConfig, bdtCommon.EndcapIDConfig):
     idcut = idConfig.trueCut + "&& %s > %f" % (idConfig.name, wp95.GetVal())
     etabins = {
         "eta1p7to2p0": "&& abs(localReco_eta)>1.7 && abs(localReco_eta)<2.0",
         "eta2p5to2p8": "&& abs(localReco_eta)>2.5 && abs(localReco_eta)<2.8",
         "eta1p6to2p8": "&& abs(localReco_eta)>1.6 && abs(localReco_eta)<2.8",
-        "eta1p6to2p9": "&& abs(localReco_eta)>1.6 && abs(localReco_eta)<2.9",
     }
     for ebn, ebc in etabins.iteritems():
         cut = idcut + ebc
-        for energy in ["scRawEnergy", "seedEnergy"]:
-            resAllE = resolutionPlot(trees[:2], "res_allPhotons_%s_%s" % (energy, ebn), "localReco_%s/(gen_pt[localReco_iGen]*cosh(gen_eta[localReco_iGen])):gen_pt[localReco_iGen]" % energy, cut, ptbinning, idConfig.name)
+        for energy in ["scRawEnergy", "seedEnergy", "seedOrigEnergy"]:
+            if energy == "seedOrigEnergy" and "noPU" in idConfig.name:
+                continue
+            resAllE = resolutionPlot(trees[:2], "res_allPhotons_%s_%s" % (energy, ebn), "localReco_%s/(gen_pt[localReco_iGen]*cosh(gen_eta[localReco_iGen])):gen_pt[localReco_iGen]*cosh(gen_eta[localReco_iGen])" % energy, cut, ebinning, idConfig.name)
             resAllE.Write()
-            resConvE = resolutionPlot(trees[:2], "res_unconverted_%s_%s" % (energy, ebn), "localReco_%s/(gen_pt[localReco_iGen]*cosh(gen_eta[localReco_iGen])):gen_pt[localReco_iGen]" % energy, cut+" && !(abs(gen_conversionZ[localReco_iGen])<290 && gen_conversionRho[localReco_iGen]<120)", ptbinning, idConfig.name)
+            resConvE = resolutionPlot(trees[:2], "res_unconverted_%s_%s" % (energy, ebn), "localReco_%s/(gen_pt[localReco_iGen]*cosh(gen_eta[localReco_iGen])):gen_pt[localReco_iGen]*cosh(gen_eta[localReco_iGen])" % energy, cut+" && !(abs(gen_conversionZ[localReco_iGen])<290 && gen_conversionRho[localReco_iGen]<120)", ebinning, idConfig.name)
             resConvE.Write()
 else:
     cut = idConfig.trueCut + " && %s > %f" % (idConfig.name, wp95.GetVal())
-    resAll = resolutionPlot(trees[:2], "res_allPhotons",   "gedReco_energy_nmax15/(gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])):gen_pt[gedReco_iGen]", cut, ptbinning, idConfig.name)
-    resConv = resolutionPlot(trees[:2], "res_unconverted", "gedReco_energy_nmax15/(gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])):gen_pt[gedReco_iGen]", cut+" && !(abs(gen_conversionZ[gedReco_iGen])<290 && gen_conversionRho[gedReco_iGen]<120)", ptbinning, idConfig.name)
+    resAll = resolutionPlot(trees[:2], "res_allPhotons",   "gedReco_energy_nmax15/(gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])):gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])", cut, ebinning, idConfig.name)
+    resConv = resolutionPlot(trees[:2], "res_unconverted", "gedReco_energy_nmax15/(gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])):gen_pt[gedReco_iGen]*cosh(gen_eta[gedReco_iGen])", cut+" && !(abs(gen_conversionZ[gedReco_iGen])<290 && gen_conversionRho[gedReco_iGen]<120)", ebinning, idConfig.name)
     resAll.Write()
     resConv.Write()
 

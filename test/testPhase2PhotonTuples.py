@@ -11,13 +11,24 @@ options.register(
     VarParsing.varType.bool,
     "phase 2 sample"
 )
+options.register(
+    "simClusters",
+    False,
+    VarParsing.multiplicity.singleton,
+    VarParsing.varType.bool,
+    "use simClusters"
+)
 options.parseArguments()
 
 process.options = cms.untracked.PSet(
     wantSummary = cms.untracked.bool(True),
+    allowUnscheduled = cms.untracked.bool(True),
     numberOfThreads = cms.untracked.uint32(4 if options.phase2 else 1),
     numberOfStreams = cms.untracked.uint32(0),
 )
+
+# no schedule, just add
+process.p = cms.Path()
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
 if options.phase2:
@@ -28,14 +39,31 @@ process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(options.maxE
 process.source = cms.Source ("PoolSource", fileNames = cms.untracked.vstring(options.inputFiles) )
 
 phoSrc = cms.InputTag("gedPhotons")
+eleSrcForCleaning = cms.InputTag("gedGsfElectrons")
 if options.phase2:
     phoSrc = cms.InputTag("photonsFromMultiCl")
-    from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import hgcalPhotonIDValueMap
-    process.hgcPhotonID = hgcalPhotonIDValueMap.clone()
-    process.hgcPhotonID.photons = phoSrc
+    eleSrcForCleaning = cms.InputTag("ecalDrivenGsfElectronsFromMultiCl")
+    if options.simClusters:
+        process.recoveredPhotons = cms.EDProducer("PhotonsFromSimClusterRecovery",
+            barrelPhotons = cms.InputTag("gedPhotons"),
+            barrelCut = cms.string("0."),
+            pfCandidates = cms.InputTag("particleFlow"),
+            pfSuperClustersHGCal = cms.InputTag("particleFlowSuperClusterHGCal"),
+            endcapSuperClusterCut = cms.string("1."),
+            vertices = cms.InputTag("offlinePrimaryVertices"),
+        )
+        process.p += process.recoveredPhotons
+        phoSrc = cms.InputTag("recoveredPhotons")
+        eleSrcForCleaning = cms.InputTag("ecalDrivenGsfElectrons")
+
+    from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cff import hgcalPhotonIDValueMap
+    process.hgcPhotonID = hgcalPhotonIDValueMap.clone(photons=phoSrc)
+    process.p += process.hgcPhotonID
     from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
     process.hgcPhotonMVAbarrel = hgcalPhotonMVA.clone(photons=cms.InputTag("gedPhotons"))
-    process.hgcPhotonMVAendcap = hgcalPhotonMVA.clone()
+    process.p += process.hgcPhotonMVAbarrel
+    process.hgcPhotonMVAendcap = hgcalPhotonMVA.clone(photons=phoSrc)
+    process.p += process.hgcPhotonMVAendcap
 
 process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     photons = phoSrc,
@@ -45,7 +73,7 @@ process.ntupler = cms.EDAnalyzer("Phase2PhotonTupler",
     genParticles = cms.InputTag("genParticles"),
     genCut = cms.string("pt>5 && status==1 && (abs(pdgId)==11 || pdgId==22)"),
     rhoSrc = cms.InputTag("fixedGridRhoFastjetAll"),
-    ecalDrivenElectrons = cms.InputTag("ecalDrivenGsfElectronsFromMultiCl" if options.phase2 else "gedGsfElectrons"),
+    ecalDrivenElectrons = eleSrcForCleaning,
     gedGsfElectrons = cms.InputTag("gedGsfElectrons"),
     conversions = cms.InputTag("conversions"),
     beamspot = cms.InputTag("offlineBeamSpot"),
@@ -109,17 +137,11 @@ if options.phase2:
 else:
     process.ntupler.localRecoMisc = cms.PSet(process.ntupler.gedRecoMisc)
 
+
+process.p += process.ntupler
+
 process.TFileService = cms.Service("TFileService",
     fileName = cms.string(options.outputFile)
 )
 
-if options.phase2:
-    process.p = cms.Path(
-        process.hgcPhotonID +
-        process.hgcPhotonMVAbarrel +
-        process.hgcPhotonMVAendcap +
-        process.ntupler
-    )
-else:
-    process.p = cms.Path( process.ntupler )
 
