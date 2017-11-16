@@ -35,10 +35,14 @@ process.load("RecoEgamma.Phase2InterimID.phase2EgammaRECO_cff")
 
 # e.g. 
 process.ntupler = cms.EDAnalyzer("MyTuples",
+    barrelElectrons = cms.InputTag("gedGsfElectrons"),
+    barrelElectronMVA  = cms.InputTag("hgcElectronMVAbarrel"),
+    endcapElectrons = cms.InputTag("cleanedEcalDrivenGsfElectronsFromMultiCl"),
+    endcapElectronMVA  = cms.InputTag("hgcElectronMVAendcap"),
     barrelPhotons = cms.InputTag("gedPhotons"),
-    barrelPhoMva  = cms.InputTag("hgcPhotonMVAbarrel"),
+    barrelPhoMVA  = cms.InputTag("hgcPhotonMVAbarrel"),
     endcapPhotons = cms.InputTag("photonsFromMultiCl"),
-    endcapPhoMva  = cms.InputTag("hgcPhotonMVAendcap"),
+    endcapPhoMVA  = cms.InputTag("hgcPhotonMVAendcap"),
 )
 process.p = cms.Path( process.phase2Egamma + process.ntupler )
 ```
