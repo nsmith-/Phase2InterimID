@@ -131,6 +131,8 @@ if len(idConfig)==1:
 else:
     raise Exception("Check idConfigs in bdtCommon.py")
 
+isEndcap = isinstance(idConfig, bdtCommon.EndcapIDConfig)
+
 filenames = bdtCommon.allInputFiles
 if "noPU" in idConfig.name:
     filenames = idConfig.inputFiles
@@ -144,13 +146,14 @@ fout = ROOT.TFile.Open("plots_%s.root" % idConfig.name, "recreate")
 
 
 # ROC curves
-rocGJets = makeROC(trees[0:1], idConfig, idConfig.trueCut, idConfig.bkgCut)
+loptcut = "&&abs(localReco_scEta)>1.6&&abs(localReco_scEta)<2.8" if isEndcap else ""
+rocGJets = makeROC(trees[0:1], idConfig, idConfig.trueCut+loptcut, idConfig.bkgCut+loptcut)
 rocGJets.SetNameTitle("gjetsROC", idConfig.name)
 rocGJets.Write()
-rocGJetsRej = makeROC(trees[0:1], idConfig, idConfig.trueCut, idConfig.bkgCut, False)
+rocGJetsRej = makeROC(trees[0:1], idConfig, idConfig.trueCut+loptcut, idConfig.bkgCut+loptcut, False)
 rocGJetsRej.SetNameTitle("gjetsROCrej", idConfig.name)
 rocGJetsRej.Write()
-hiptcut = "&&localReco_pt>50." if isinstance(idConfig, bdtCommon.EndcapIDConfig) else "&&gedReco_pt>50."
+hiptcut = "&&localReco_pt>50.&&abs(localReco_scEta)>1.6&&abs(localReco_scEta)<2.8" if isEndcap else "&&gedReco_pt>50."
 rocGJetsHighPt = makeROC(trees[0:1], idConfig, idConfig.trueCut+hiptcut, idConfig.bkgCut+hiptcut)
 rocGJetsHighPt.SetNameTitle("gjetsHiPtROC", idConfig.name)
 rocGJetsHighPt.Write()
@@ -165,7 +168,7 @@ rocGamma.SetNameTitle("gammaROC", idConfig.name)
 rocGamma.Write()
 noe = idConfig.bkgCut + "&& (gedReco_iGen<0||abs(gen_id[gedReco_iGen])!=11)"
 juste = idConfig.bkgCut + "&& gedReco_iGen>=0 && abs(gen_id[gedReco_iGen])==11 && gen_isPromptFinalState[gedReco_iGen]"
-if isinstance(idConfig, bdtCommon.EndcapIDConfig):
+if isEndcap:
     noe = noe.replace("gedReco", "localReco")
     juste = juste.replace("gedReco", "localReco")
 rocNoE = makeROC(trees, idConfig, idConfig.trueCut, noe)
@@ -189,7 +192,7 @@ if True:
     }
     for name, cut in gencats.iteritems():
         cut = idConfig.trainingCut + "&&" + cut
-        if isinstance(idConfig, bdtCommon.EndcapIDConfig):
+        if isEndcap:
             cut = cut.replace("gedReco", "localReco")
         hmva = ROOT.TH1F("mva_"+name, "%s;BDT output;Normalized" % name, 100, -1, 1)
         for tree in trees:
@@ -223,8 +226,8 @@ effeta_def = ROOT.TH1D("effeta_def", "abs(gen_eta);Generated |#eta^{#gamma}|;Eff
 denom_pt = "gen_id == 22 && gen_isPromptFinalState && abs(gen_parentId)!=11"
 denom_eta = denom_pt
 pre = "1."
-if isinstance(idConfig, bdtCommon.EndcapIDConfig):
-    denom_pt += " && abs(gen_eta)>1.6 && abs(gen_eta)<2.9"
+if isEndcap:
+    denom_pt += " && abs(gen_eta)>1.6 && abs(gen_eta)<2.8"
     denom_eta += " && gen_pt>30."
     pre = "abs(localReco_depthCompatibility[gen_iLocalReco]) < 20. && localReco_seedEnergyFH[gen_iLocalReco]/localReco_seedEnergyEE[gen_iLocalReco] < 20."
 else:
@@ -237,7 +240,7 @@ efficiencies = {
     "idmva95": "gen_gedRecoDeltaR < 0.1 && %s && %s[gen_iGedReco] > %f" % (pre, idConfig.name, wp95.GetVal()),
 }
 for name, cut in efficiencies.iteritems():
-    if isinstance(idConfig, bdtCommon.EndcapIDConfig):
+    if isEndcap:
         cut = cut.replace("gedReco", "localReco")
         cut = cut.replace("GedReco", "LocalReco")
     eff = makeEff(trees[0:2], effpt_def, cut, denom_pt)
@@ -252,13 +255,13 @@ for name, cut in efficiencies.iteritems():
 
 
 # Bkg efficiencies
-reco = "localReco" if isinstance(idConfig, bdtCommon.EndcapIDConfig) else "gedReco"
+reco = "localReco" if isEndcap else "gedReco"
 bkgeffpt_def = ROOT.TH1D("bkgeffpt_def", "%s_pt;p_{T}^{#gamma} [GeV];Efficiency" % reco, len(ptbinning)-1, ptbinning)
 bkgeffeta_def = ROOT.TH1D("bkgeffeta_def", "abs(%s_eta);|#eta^{#gamma}|;Efficiency" % reco, 32, 0, 3.2)
 denom_pt = "!(%s)" % idConfig.trueDef
 denom_eta = "!(%s)" % idConfig.trueDef
-if isinstance(idConfig, bdtCommon.EndcapIDConfig):
-    denom_pt += " && abs(localReco_scEta)>1.6 && abs(localReco_scEta)<2.9"
+if isEndcap:
+    denom_pt += " && abs(localReco_scEta)>1.6 && abs(localReco_scEta)<2.8"
     denom_eta += " && localReco_pt>30."
 else:
     denom_pt += " && abs(gedReco_scEta)<1.4"
@@ -268,7 +271,7 @@ efficiencies = {
     "idmva95": "%s && %s > %f" % (pre, idConfig.name, wp95.GetVal()),
 }
 for name, cut in efficiencies.iteritems():
-    if isinstance(idConfig, bdtCommon.EndcapIDConfig):
+    if isEndcap:
         cut = cut.replace("gedReco", "localReco")
         cut = cut.replace("GedReco", "LocalReco")
     eff = makeEff(trees[0:3], bkgeffpt_def, cut, denom_pt)
@@ -281,7 +284,7 @@ for name, cut in efficiencies.iteritems():
 
 # Resolution
 ebinning = array.array('d', [10., 20., 30., 40., 50., 60., 70., 80., 90., 100., 120., 140., 160., 180., 200., 240., 280., 320., 360., 400., 450., 500., 550., 600., 700., 800., 900., 1000., 1200., 1400., 1600., 1800., 2000., 2500., 3000.])
-if isinstance(idConfig, bdtCommon.EndcapIDConfig):
+if isEndcap:
     idcut = idConfig.trueCut + "&& %s > %f" % (idConfig.name, wp95.GetVal())
     etabins = {
         "eta1p7to2p0": "&& abs(localReco_eta)>1.7 && abs(localReco_eta)<2.0",
@@ -310,8 +313,8 @@ if False:
     recoeffpt_def  = ROOT.TH1D("recoeffpt_def", "gedReco_pt;p_{T}^{#gamma} [GeV];Efficiency", len(ptbinning)-1, ptbinning)
     recoeffeta_def = ROOT.TH1D("recoeffeta_def", "abs(gedReco_eta);|#eta^{#gamma}|;Efficiency", 30, 0, 3.)
     denom = "gedReco_pt > 10. && abs(gedReco_eta)<1.4"
-    if isinstance(idConfig, bdtCommon.EndcapIDConfig):
-        denom = "localReco_pt > 10. && abs(localReco_eta)>1.5 && abs(localReco_eta)<2.9"
+    if isEndcap:
+        denom = "localReco_pt > 10. && abs(localReco_eta)>1.5 && abs(localReco_eta)<2.8"
         recoeffpt_def.SetTitle("localReco_pt")
         recoeffeta_def.SetTitle("abs(localReco_eta)")
 
