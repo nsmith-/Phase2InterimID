@@ -172,7 +172,19 @@ HGCalElectronMVAProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
 
     float bdtValue = -1.;
 
+    // Track-based
+    tmva_ele_fbrem = electron.fbrem();
+    tmva_ele_gsfhits = electron.gsfTrack()->hitPattern().trackerLayersWithMeasurement();
+    tmva_ele_gsfchi2 = electron.gsfTrack()->normalizedChi2();
+
+    reco::TrackRef myTrackRef = electron.closestCtfTrackRef();
+    bool validKF = myTrackRef.isAvailable() && myTrackRef.isNonnull();
+    tmva_ele_kfhits = (validKF) ? myTrackRef->hitPattern().trackerLayersWithMeasurement() : -1.;
+    tmva_ele_kfchi2 = (validKF) ? myTrackRef->normalizedChi2() : -1.;
+
     if(electron.isEB()) {
+
+
       tmva_ele_oldsigmaietaieta = electron.full5x5_sigmaIetaIeta();
       tmva_ele_oldsigmaiphiiphi = electron.full5x5_sigmaIphiIphi();
       tmva_ele_oldcircularity = ( electron.showerShape().e5x5!=0.) ? 1.-electron.showerShape().e1x5/electron.showerShape().e5x5 : -1. ;
@@ -184,6 +196,7 @@ HGCalElectronMVAProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
       tmva_ele_eseedpout = electron.eEleClusterOverPout();
       tmva_ele_deltaetaseed = electron.deltaEtaSeedClusterTrackAtCalo();
       tmva_ele_deltaphiseed = electron.deltaPhiSeedClusterTrackAtCalo();
+
       bdtValue = (electron.pt() < pTLimit_ ) ? barrelLowPtReader_->EvaluateMVA("BDTSimpleCat") : barrelHighPtReader_->EvaluateMVA("BDTSimpleCat");
     }
     else if (externalvar("sigmaUU") == 0.) {
@@ -192,15 +205,7 @@ HGCalElectronMVAProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
     else {
       tmva_ele_hgc_depthCompat = externalvar("depthCompatibility");
 
-      // Track-based
-      tmva_ele_fbrem = electron.fbrem();
-      tmva_ele_gsfhits = electron.gsfTrack()->hitPattern().trackerLayersWithMeasurement();
-      tmva_ele_gsfchi2 = electron.gsfTrack()->normalizedChi2();
 
-      reco::TrackRef myTrackRef = electron.closestCtfTrackRef();
-      bool validKF = myTrackRef.isAvailable() && myTrackRef.isNonnull();
-      tmva_ele_kfhits = (validKF) ? myTrackRef->hitPattern().trackerLayersWithMeasurement() : -1.;
-      tmva_ele_kfchi2 = (validKF) ? myTrackRef->normalizedChi2() : -1.;
 
       // Track-matching
       tmva_ele_eelepout = electron.eEleClusterOverPout();
@@ -235,7 +240,7 @@ HGCalElectronMVAProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
       tmva_ele_hgc_EE4overEE = externalvar("e4oEtot");
       tmva_ele_hgc_layEfrac10 = externalvar("layerEfrac10");
       tmva_ele_hgc_layEfrac90 = externalvar("layerEfrac90");
-      tmva_ele_hgc_FHoverEE = ( externalvar("ecEnergyEE") !=0. ) ? externalvar("ecEnergyFH") / externalvar("ecEnergyFH") : -1.;
+      tmva_ele_hgc_FHoverEE = ( externalvar("ecEnergyEE") !=0. ) ? externalvar("ecEnergyFH") / externalvar("ecEnergyEE") : -1.;
 
       bdtValue = (electron.pt() < pTLimit_ ) ? endcapLowPtReader_->EvaluateMVA("BDTSimpleCat") : endcapHighPtReader_->EvaluateMVA("BDTSimpleCat");
     }
