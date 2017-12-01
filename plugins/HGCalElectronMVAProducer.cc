@@ -193,7 +193,7 @@ HGCalElectronMVAProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
       tmva_ele_sclphiwidth = electron.superCluster()->phiWidth();
       tmva_ele_he = electron.hcalOverEcal();
       tmva_ele_ep = electron.eSuperClusterOverP();
-      tmva_ele_eseedpout = electron.eEleClusterOverPout();
+      tmva_ele_eseedpout = electron.eSeedClusterOverPout();
       tmva_ele_deltaetaseed = electron.deltaEtaSeedClusterTrackAtCalo();
       tmva_ele_deltaphiseed = electron.deltaPhiSeedClusterTrackAtCalo();
 
