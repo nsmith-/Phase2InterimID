@@ -60,21 +60,21 @@ trees = [f.Get("ntupler/photons") for f in files]
 
 # https://twiki.cern.ch/twiki/bin/viewauth/CMS/CutBasedPhotonIdentificationRun2
 EAs = [
-    ["(1.0  <=abs(gedReco_eta)) ?",  "0.0377",  "0.0807",  "0.1107"],
-    ["(1.479<=abs(gedReco_eta)) ?",  "0.0306",  "0.0629",  "0.0699"],
-    ["(2.0  <=abs(gedReco_eta)) ?",  "0.0283",  "0.0197",  "0.1056"],
-    ["(2.2  <=abs(gedReco_eta)) ?",  "0.0254",  "0.0184",  "0.1457"],
-    ["(2.3  <=abs(gedReco_eta)) ?",  "0.0217",  "0.0284",  "0.1719"],
-    ["(2.4  <=abs(gedReco_eta)) ?",  "0.0167",  "0.0591",  "0.1998"], 
-    ["",                             "0.0360",  "0.0597",  "0.1210"],
+    ["(1.0  > abs(gedReco_eta)) ?",  "0.0360",  "0.0597",  "0.1210"],
+    ["(1.479> abs(gedReco_eta)) ?",  "0.0377",  "0.0807",  "0.1107"],
+    ["(2.0  > abs(gedReco_eta)) ?",  "0.0306",  "0.0629",  "0.0699"],
+    ["(2.2  > abs(gedReco_eta)) ?",  "0.0283",  "0.0197",  "0.1056"],
+    ["(2.3  > abs(gedReco_eta)) ?",  "0.0254",  "0.0184",  "0.1457"],
+    ["(2.4  > abs(gedReco_eta)) ?",  "0.0217",  "0.0284",  "0.1719"],
+    ["",                             "0.0167",  "0.0591",  "0.1998"], 
 ]
 chgIso = ":".join(["%s max(gedReco_chargedHadronIso - rho*%s,0.)" % (ea[0], ea[1]) for ea in EAs])
 neuIso = ":".join(["%s max(gedReco_neutralHadronIso - rho*%s,0.)" % (ea[0], ea[2]) for ea in EAs])
 phoIso = ":".join(["%s max(gedReco_photonIso        - rho*%s,0.)" % (ea[0], ea[3]) for ea in EAs])
 run2WPs_barrel = [
-    'gedReco_conversionSafeElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.01031 && gedReco_hadronicOverEm < 0.0597 && ({chgIso}) < 1.295 && ({neuIso}) < 10.910+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 3.630+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
-    'gedReco_conversionSafeElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.01022 && gedReco_hadronicOverEm < 0.0396 && ({chgIso}) < 0.441 && ({neuIso}) <  2.725+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 2.571+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
-    'gedReco_conversionSafeElectronVeto && gedReco_full5x5_sigmaIetaIeta < 0.00994 && gedReco_hadronicOverEm < 0.0269 && ({chgIso}) < 0.202 && ({neuIso}) <  0.264+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 2.362+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
+    'gedReco_full5x5_sigmaIetaIeta < 0.01031 && gedReco_hadronicOverEm < 0.0597 && ({chgIso}) < 1.295 && ({neuIso}) < 10.910+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 3.630+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
+    'gedReco_full5x5_sigmaIetaIeta < 0.01022 && gedReco_hadronicOverEm < 0.0396 && ({chgIso}) < 0.441 && ({neuIso}) <  2.725+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 2.571+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
+    'gedReco_full5x5_sigmaIetaIeta < 0.00994 && gedReco_hadronicOverEm < 0.0269 && ({chgIso}) < 0.202 && ({neuIso}) <  0.264+0.0148*gedReco_pt+0.000017*gedReco_pt^2 && ({phoIso}) < 2.362+0.0047*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
 ]
 run2WPs_endcap = [
     'gedReco_full5x5_sigmaIetaIeta < 0.03013 && gedReco_hadronicOverEm < 0.0481 && ({chgIso}) < 1.011 && ({neuIso}) <  5.931+0.0163*gedReco_pt+0.000014*gedReco_pt^2 && ({phoIso}) < 6.641+0.0034*gedReco_pt'.format(chgIso=chgIso, neuIso=neuIso, phoIso=phoIso),
@@ -84,11 +84,32 @@ run2WPs_endcap = [
 
 fout = ROOT.TFile.Open("plots_cuts.root", "recreate")
 
-# medium to eveto
 ptbinning = array.array('d', [10., 20., 30., 40., 50., 60., 70., 80., 90., 100., 120., 140., 160., 180., 200., 250., 300., 350., 400., 450., 500.])
 effpt_def = ROOT.TH1D("effpt_def", "gedReco_pt;p_{T}^{#gamma} [GeV];Efficiency", len(ptbinning)-1, ptbinning)
 denom_pt = "gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_isPromptFinalState[gedReco_iGen] && abs(gen_parentId[gedReco_iGen])!=11"
 
+effloose = makeEff(trees[0:1], effpt_def, run2WPs_barrel[0], denom_pt+"&& abs(gedReco_scEta)<1.4")
+effloose.SetNameTitle("effPt_barrel_loose", "Barrel")
+effloose.Write()
+effmed = makeEff(trees[0:1], effpt_def, run2WPs_barrel[1], denom_pt+"&& abs(gedReco_scEta)<1.4")
+effmed.SetNameTitle("effPt_barrel_med", "Barrel")
+effmed.Write()
+efftight = makeEff(trees[0:1], effpt_def, run2WPs_barrel[2], denom_pt+"&& abs(gedReco_scEta)<1.4")
+efftight.SetNameTitle("effPt_barrel_tight", "Barrel")
+efftight.Write()
+
+denom_pt = "!(gedReco_iGen>=0 && gen_id[gedReco_iGen] == 22 && gen_isPromptFinalState[gedReco_iGen] && abs(gen_parentId[gedReco_iGen])!=11)"
+bkgeffloose = makeEff(trees[0:1], effpt_def, run2WPs_barrel[0], denom_pt+"&& abs(gedReco_scEta)<1.4")
+bkgeffloose.SetNameTitle("bkgEffPt_barrel_loose", "Barrel")
+bkgeffloose.Write()
+bkgeffmed = makeEff(trees[0:1], effpt_def, run2WPs_barrel[1], denom_pt+"&& abs(gedReco_scEta)<1.4")
+bkgeffmed.SetNameTitle("bkgEffPt_barrel_med", "Barrel")
+bkgeffmed.Write()
+bkgefftight = makeEff(trees[0:1], effpt_def, run2WPs_barrel[2], denom_pt+"&& abs(gedReco_scEta)<1.4")
+bkgefftight.SetNameTitle("bkgEffPt_barrel_tight", "Barrel")
+bkgefftight.Write()
+
+# medium to eveto
 eff = makeEff(trees[0:1], effpt_def, "!gedReco_hasPixelSeed", denom_pt+"&& abs(gedReco_scEta)<1.4 &&"+run2WPs_barrel[1])
 eff.SetNameTitle("effPt_pixSeed_barrel", "Barrel")
 eff.Write()
