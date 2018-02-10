@@ -122,6 +122,11 @@ process.ntupler.gedRecoMisc = cms.PSet(
     photonIso = cms.string("photonIso()"),
     trkSumPtSolidConeDR04 = cms.string("trkSumPtSolidConeDR04()"),
     nTrkSolidConeDR04 = cms.string("nTrkSolidConeDR04()"),
+    full5x5_e2x5Left = cms.string("full5x5_showerShapeVariables().e2x5Left"),
+    full5x5_e2x5Right = cms.string("full5x5_showerShapeVariables().e2x5Right"),
+    full5x5_e1x5 = cms.string("full5x5_showerShapeVariables().e1x5"),
+    full5x5_e2x5 = cms.string("full5x5_showerShapeVariables().e2x5"),
+    full5x5_e5x5 = cms.string("full5x5_showerShapeVariables().e5x5"),
 )
 
 if options.phase2:
