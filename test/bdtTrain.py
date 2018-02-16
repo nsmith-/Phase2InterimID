@@ -40,6 +40,7 @@ w.EvaluateAllMethods()
 
 fOut.Close()
 ROOT.TMVA.mvas("default", "%sout.root" % idConfig.name, ROOT.TMVA.kCompareType)
+ROOT.gPad.SetLogy(True)
 ROOT.gPad.Print("bdt_overtrain_%s.pdf" % idConfig.name)
 
 #g = ROOT.TMVA.TMVAGui("tmvaout.root")

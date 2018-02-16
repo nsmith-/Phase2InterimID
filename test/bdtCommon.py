@@ -78,7 +78,7 @@ class BarrelIDConfig(IDConfig):
     
 
 class EndcapIDConfig(IDConfig):
-    preselection = "abs(localReco_depthCompatibility) < 20. && localReco_seedEnergyFH/localReco_seedEnergyEE < 20."
+    preselection = "localReco_nLayers >= 5 && abs(localReco_depthCompatibility) < 20. && localReco_seedEnergyFH/localReco_seedEnergyEE < 20."
     trainingCut = preselection + " && localReco_pt>25 && abs(localReco_eta)>1.5 && (localReco_iGen<0||abs(gen_parentId[localReco_iGen])!=11)"
     trueDef = "localReco_iGen>=0 && gen_id[localReco_iGen] == 22 && gen_isPromptFinalState[localReco_iGen]"
     trueCut = trainingCut + " && (%s)" % trueDef
@@ -111,9 +111,15 @@ class EndcapIDConfigRun2(EndcapIDConfig):
 
 allInputFiles = [
     "/data/ncsmith/932phoID_round4/GJets.root",
-    "/data/ncsmith/932phoID_round4/DiPhotonSherpa.root",
-    "/data/ncsmith/932phoID_round4/QCD.root",
-    "/data/ncsmith/932phoID_round4/DY2J.root",
+    #"/data/ncsmith/932phoID_round4/DiPhotonSherpa.root",
+    #"/data/ncsmith/932phoID_round4/QCD.root",
+    #"/data/ncsmith/932phoID_round4/DY2J.root",
+]
+allInputFilesDescope = [
+    "/data/ncsmith/932phoID_descope/GJets.root",
+    #"/data/ncsmith/932phoID_descope/DiPhotonSherpa.root",
+    #"/data/ncsmith/932phoID_descope/QCD.root",
+    #"/data/ncsmith/932phoID_descope/DY2J.root",
 ]
 allInputFilesPU0 = [
     "/data/ncsmith/932phoID_round3/GJetspu0.root",
@@ -146,6 +152,68 @@ idconfigs = [
         ],
         "BoostType=Grad:Shrinkage=0.4:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=2:nCuts=200",
         allInputFiles
+    ),
+    EndcapIDConfig("endcapV4descope",
+        [
+            Variable("sigmaUU", "localReco_sigmaUU"),
+            Variable("sigmaVV", "localReco_sigmaVV"),
+            Variable("e4oEtot", "localReco_e4oEtot"),
+            Variable("layerEfrac10", "localReco_layerEfrac10"),
+            Variable("layerEfrac90", "localReco_layerEfrac90"),
+            Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
+            Variable("measuredDepth", "localReco_measuredDepth"),
+            Variable("depthCompatibility", "localReco_depthCompatibility"),
+            Variable("isoRing0", "localReco_caloIsoRing0"),
+            Variable("isoRing1", "localReco_caloIsoRing1"),
+            Variable("isoRing2", "localReco_caloIsoRing2"),
+            Variable("isoRing3", "localReco_caloIsoRing3"),
+            Variable("isoRing4", "localReco_caloIsoRing4"),
+            Variable("scEnergy", "localReco_scRawEnergy"),
+            Variable("matchedTrackChi2", "localReco_matchedGsfChi2"),
+            Variable("matchedTrackHits", "localReco_matchedGsfHits"),
+            Variable("matchedTrackLostHits", "localReco_matchedGsfLostHits"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.4:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=2:nCuts=200",
+        allInputFilesDescope
+    ),
+    EndcapIDConfig("endcapV4noIso",
+        [
+            Variable("sigmaUU", "localReco_sigmaUU"),
+            Variable("sigmaVV", "localReco_sigmaVV"),
+            Variable("e4oEtot", "localReco_e4oEtot"),
+            Variable("layerEfrac10", "localReco_layerEfrac10"),
+            Variable("layerEfrac90", "localReco_layerEfrac90"),
+            Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
+            Variable("measuredDepth", "localReco_measuredDepth"),
+            Variable("depthCompatibility", "localReco_depthCompatibility"),
+            Variable("scEnergy", "localReco_scRawEnergy"),
+            Variable("matchedTrackChi2", "localReco_matchedGsfChi2"),
+            Variable("matchedTrackHits", "localReco_matchedGsfHits"),
+            Variable("matchedTrackLostHits", "localReco_matchedGsfLostHits"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.4:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=2:nCuts=200",
+        allInputFiles
+    ),
+    EndcapIDConfig("endcapV4descopeNoIso",
+        [
+            Variable("sigmaUU", "localReco_sigmaUU"),
+            Variable("sigmaVV", "localReco_sigmaVV"),
+            Variable("e4oEtot", "localReco_e4oEtot"),
+            Variable("layerEfrac10", "localReco_layerEfrac10"),
+            Variable("layerEfrac90", "localReco_layerEfrac90"),
+            Variable("FHoverE", "localReco_seedEnergyFH/localReco_seedEnergyEE"),
+            Variable("measuredDepth", "localReco_measuredDepth"),
+            Variable("depthCompatibility", "localReco_depthCompatibility"),
+            Variable("scEnergy", "localReco_scRawEnergy"),
+            Variable("matchedTrackChi2", "localReco_matchedGsfChi2"),
+            Variable("matchedTrackHits", "localReco_matchedGsfHits"),
+            Variable("matchedTrackLostHits", "localReco_matchedGsfLostHits"),
+            Variable("rho", "rho"),
+        ],
+        "BoostType=Grad:Shrinkage=0.4:UseBaggedBoost=True:BaggedSampleFraction=0.6:NTrees=2000:MaxDepth=2:nCuts=200",
+        allInputFilesDescope
     ),
     BarrelIDConfig("barrelV4",
         [

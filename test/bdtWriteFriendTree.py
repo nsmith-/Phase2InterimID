@@ -15,11 +15,7 @@ else:
 
 idConfig.makeReader()
 
-filenames = bdtCommon.allInputFiles
-if "_run2" in idConfig.name:
-    filenames = idConfig.inputFiles
-if "noPU" in idConfig.name:
-    filenames = idConfig.inputFiles
+filenames = idConfig.inputFiles
 if len(sys.argv) > 2:
     filenames = sys.argv[2:]
 
