@@ -1,16 +1,11 @@
 import FWCore.ParameterSet.Config as cms
 
-from RecoEgamma.EgammaTools.slimmedEgammaFromMultiCl_cff import *
-
-# Usually brought in by PhysicsTools.PatAlgos.producersLayer1.electronProducer_cff
-from TrackingTools.TransientTrack.TransientTrackBuilder_cfi import *
-
 from RecoEgamma.Phase2InterimID.hgcalElectronMVAProducer_cfi import hgcalElectronMVA
 hgcElectronMVAbarrel = hgcalElectronMVA.clone(electrons=cms.InputTag("slimmedElectrons"), usePAT=True)
 hgcElectronMVAendcap = hgcalElectronMVA.clone(electrons=cms.InputTag("slimmedElectronsFromMultiCl"), usePAT=True)
 from RecoEgamma.Phase2InterimID.hgcalPhotonMVAProducer_cfi import hgcalPhotonMVA
 hgcPhotonMVAbarrel = hgcalPhotonMVA.clone(photons=cms.InputTag("slimmedPhotons"), usePAT=True)
-hgcPhotonMVAendcap = hgcalPhotonMVA.clone(photons=cms.InputTag("slimmedPhotonsFromMultiCl"), usePAT=True)
+hgcPhotonMVAendcap = hgcalPhotonMVA.clone(photons=cms.InputTag("slimmedPhotonsFromMultiCl"), electronsFromMultiCl=cms.InputTag("slimmedElectronsFromMultiCl"), usePAT=True)
 
 phase2Electrons = cms.EDProducer("Phase2ElectronMerger",
     barrelElectrons = cms.InputTag("slimmedElectrons"),
@@ -31,7 +26,6 @@ phase2Photons = cms.EDProducer("Phase2PhotonMerger",
 )
 
 phase2EgammaTask = cms.Task(
-    slimmedEgammaFromMultiClTask,
     hgcElectronMVAbarrel,
     hgcElectronMVAendcap,
     hgcPhotonMVAbarrel,

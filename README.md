@@ -5,16 +5,34 @@ This package has been used to develop photon IDs for the phase 2 HGCal TDR, and 
 Recipe
 ------
 ```bash
-cmsrel CMSSW_9_3_2
-cd CMSSW_9_3_2/src
+cmsrel CMSSW_9_3_5
+cd CMSSW_9_3_5/src
 cmsenv
 git cms-init
-git cms-merge-topic -u nsmith-:EgammaFromMultiCl_932v2
 mkdir -p RecoEgamma && pushd RecoEgamma
-git clone -b integrated git@github.com:nsmith-/Phase2InterimID.git
+git clone git@github.com:nsmith-/Phase2InterimID.git
 popd
 scram b -j 8
 ```
+
+Running on MiniAOD tier
+-----------------------
+MINIAOD is the simplest and preferred method.
+The ID input variables are already computed for you in the `PhaseIISpr18AODMiniAOD` campaign, but the final MVA ID value is not precomputed.
+To compute the MVA value, a `cff` has been made which runs ID on barrel and endcap collections, and 
+produces merged collections of electrons and photons with embedded MVA values.
+It can be imported as follows:
+```python
+process.load("RecoEgamma.Phase2InterimID.phase2EgammaPAT_cff")
+
+# e.g.
+process.ntupler.patPhotonsSrc = cms.InputTag("phase2Photons")
+process.ntupler.patElectronsSrc = cms.InputTag("phase2Electrons")
+process.p = cms.Path( process.phase2Egamma + process.ntupler )
+```
+See `test/testPhase2EgammaCollections.py` for a more complete example.
+The ID value is accessible as `userFloat("mvaValue")`.  Use `isEB()` to decide whether the object is from HGCal multiclusters or standard barrel GED.
+It is suggested to save the MVA value and cut later.  See below for working points.
 
 Running on RECO tier
 --------------------
@@ -47,26 +65,6 @@ process.ntupler = cms.EDAnalyzer("MyTuples",
 process.p = cms.Path( process.phase2Egamma + process.ntupler )
 ```
 See `test/testPhase2EgammaCollectionsRECO.py` for a more complete example.
-It is suggested to save the MVA value and cut later.  See below for working points.
-
-Running on MiniAOD tier
------------------------
-No endcap EGamma collections exist in MiniAOD yet.  See [here](https://github.com/cms-sw/cmssw/pull/21037) for status.
-However, one can always run with `secondaryInputFiles` to access the RECO collections.  In CRAB, there is a simple `useParent` option.
-
-To aid in this, a `cff` has been made that forms the endcap PAT collections, runs ID on barrel and endcap collections, and 
-produces merged collections of electrons and photons with embedded MVA values.
-It can be imported as follows:
-```python
-process.load("RecoEgamma.Phase2InterimID.phase2EgammaPAT_cff")
-
-# e.g.
-process.ntupler.patPhotonsSrc = cms.InputTag("phase2Photons")
-process.ntupler.patElectronsSrc = cms.InputTag("phase2Electrons")
-process.p = cms.Path( process.phase2Egamma + process.ntupler )
-```
-See `test/testPhase2EgammaCollections.py` for a more complete example.
-The ID value is accessible as `userFloat("mvaValue")`.  Use `isEB()` to decide whether the object is from HGCal multiclusters or standard barrel GED.
 It is suggested to save the MVA value and cut later.  See below for working points.
 
 Cut working points
