@@ -111,15 +111,15 @@ class EndcapIDConfigRun2(EndcapIDConfig):
 
 allInputFiles = [
     "/data/ncsmith/932phoID_round4/GJets.root",
-    #"/data/ncsmith/932phoID_round4/DiPhotonSherpa.root",
-    #"/data/ncsmith/932phoID_round4/QCD.root",
-    #"/data/ncsmith/932phoID_round4/DY2J.root",
+    "/data/ncsmith/932phoID_round4/DiPhotonSherpa.root",
+    "/data/ncsmith/932phoID_round4/QCD.root",
+    "/data/ncsmith/932phoID_round4/DY2J.root",
 ]
 allInputFilesDescope = [
     "/data/ncsmith/932phoID_descope/GJets.root",
-    #"/data/ncsmith/932phoID_descope/DiPhotonSherpa.root",
-    #"/data/ncsmith/932phoID_descope/QCD.root",
-    #"/data/ncsmith/932phoID_descope/DY2J.root",
+    "/data/ncsmith/932phoID_descope/DiPhotonSherpa.root",
+    "/data/ncsmith/932phoID_descope/QCD.root",
+    "/data/ncsmith/932phoID_descope/DY2J.root",
 ]
 allInputFilesPU0 = [
     "/data/ncsmith/932phoID_round3/GJetspu0.root",
